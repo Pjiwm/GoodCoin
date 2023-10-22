@@ -1,7 +1,7 @@
 import heapq
 from typing import List
-# from Transaction import Tx
 from core.Transaction import Tx
+
 
 class TxPool:
     def __init__(self):

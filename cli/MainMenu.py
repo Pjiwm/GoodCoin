@@ -76,6 +76,7 @@ def menu():
         \/   COIN            \/
     """
     print(title_1)
+    print(manager.address_book)
     menu_mapping = {}
     if manager.username:
         print(f"Welcome {manager.username}!")

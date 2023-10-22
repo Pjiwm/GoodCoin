@@ -29,9 +29,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
-from typing import Tuple
+from typing import Tuple, Dict
 
 USER_PATH = "data/users/"
+ADDRES_BOOK_PATH = "data/address_book/users.keys"
 
 
 def generate_keys() -> Tuple[RSAPrivateKey, RSAPublicKey]:
@@ -39,10 +40,6 @@ def generate_keys() -> Tuple[RSAPrivateKey, RSAPublicKey]:
         public_exponent=65537, key_size=2048)
     public_key = private_key.public_key()
     return private_key, public_key
-
-# TODO 1: Sign a passed message using a given private key
-# Make sure the message is encoded correctly before signing
-# Signing and verifying algorithms must be the same
 
 
 def sign(message: bytes, private_key: RSAPrivateKey) -> bytes:
@@ -75,7 +72,7 @@ def verify(message: bytes, signature: bytes, public_key: RSAPublicKey) -> bool:
         return False
 
 
-def save_keys(keys_file_name: str, keys: Tuple[RSAPrivateKey, RSAPublicKey], pw: str):
+def save_user_keys(keys_file_name: str, keys: Tuple[RSAPrivateKey, RSAPublicKey], pw: str):
     file = open(USER_PATH + keys_file_name, 'wb')
     priv = keys[0].private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -91,13 +88,50 @@ def save_keys(keys_file_name: str, keys: Tuple[RSAPrivateKey, RSAPublicKey], pw:
     file.close()
 
 
-def load_keys(keys_file_name: str, pw: str) -> Tuple[RSAPrivateKey, RSAPublicKey]:
+def load_user_keys(keys_file_name: str, pw: str) -> Tuple[RSAPrivateKey, RSAPublicKey]:
     file = open(USER_PATH + keys_file_name, 'rb')
     key_set = pickle.load(file)
     file.close()
     return (serialization.load_pem_private_key(
         key_set[0], str.encode(pw), default_backend()),
         serialization.load_pem_public_key(key_set[1], default_backend()))
+
+
+def store_in_address_book(username: str, public_key: RSAPublicKey):
+    loaded_address_book = load_address_book()
+    loaded_address_book = __map_key_dict(loaded_address_book)
+    pub_bytes = public_key.public_bytes(encoding=serialization.Encoding.PEM,
+                                        format=serialization.PublicFormat.SubjectPublicKeyInfo
+                                        )
+    loaded_address_book[username] = pub_bytes
+    file = open(ADDRES_BOOK_PATH, 'wb')
+    pickle.dump(loaded_address_book, file, -1)
+    file.close()
+
+
+def load_address_book() -> Dict[str, RSAPublicKey]:
+    try:
+        file = open(ADDRES_BOOK_PATH, 'rb')
+        file_load = pickle.load(file)
+        file.close()
+        address_book = {
+            name: serialization.load_pem_public_key(
+                key, default_backend())
+            for (name, key) in file_load.items()
+        }
+        return address_book
+    except:
+        return {}
+
+
+def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
+    return {
+        name: key.public_bytes(encoding=serialization.Encoding.PEM,
+                               format=serialization.PublicFormat.SubjectPublicKeyInfo
+                               )
+        for (name, key) in dict.items()
+    }
+
 
 def username_available(name: str) -> bool:
     file_path = os.path.join(USER_PATH, name + ".pem")
