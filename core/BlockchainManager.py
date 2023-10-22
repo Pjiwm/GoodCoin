@@ -5,6 +5,7 @@ from core.Transaction import TxBuilder, Tx
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from typing import Dict
 
+
 class BlockchainManager:
     priv_key: RSAPrivateKey
     pub_k: RSAPublicKey
@@ -27,7 +28,8 @@ class BlockchainManager:
             return "Username needs to be 5+ characters, password needs to be 6+ characters and contain a number."
 
         key_set = Signature.generate_keys()
-        Signature.save_user_keys(username + ".pem", key_set, pw)
+        pass_hash = Signature.string_hash(pw)
+        Signature.save_user_keys(username + ".pem", key_set, pass_hash)
         self.priv_key, self.pub_k = key_set
         self.username = username
         Signature.store_in_address_book(username, self.pub_k)
@@ -37,7 +39,9 @@ class BlockchainManager:
     def login_user(self, username: str, pw: str):
         file_name = username + ".pem"
         try:
-            self.priv_key, self.pub_k = Signature.load_user_keys(file_name, pw)
+            pass_hash = Signature.string_hash(pw)
+            self.priv_key, self.pub_k = Signature.load_user_keys(
+                file_name, pass_hash)
             self.username = username
             return None
         except:

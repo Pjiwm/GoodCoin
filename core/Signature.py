@@ -124,6 +124,16 @@ def load_address_book() -> Dict[str, RSAPublicKey]:
         return {}
 
 
+def string_hash(message: str) -> str:
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(bytes(message, 'utf8'))
+    return digest.finalize().hex()
+
+
+def username_available(name: str) -> bool:
+    file_path = os.path.join(USER_PATH, name + ".pem")
+    return not os.path.isfile(file_path)
+
 def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
     return {
         name: key.public_bytes(encoding=serialization.Encoding.PEM,
@@ -131,8 +141,3 @@ def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
                                )
         for (name, key) in dict.items()
     }
-
-
-def username_available(name: str) -> bool:
-    file_path = os.path.join(USER_PATH, name + ".pem")
-    return not os.path.isfile(file_path)
