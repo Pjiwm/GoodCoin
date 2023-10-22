@@ -65,7 +65,6 @@ def menu():
  ██████   ██████   ██████  ██████       ██████  ██████  ██ ██   ████
     """
     print(title)
-    print(manager.tx_pool.transactions)
     menu_mapping = {}
     if manager.username:
         print(f"Welcome {manager.username}!")

@@ -17,6 +17,7 @@ class Tx:
         self.outputs: List[Tuple[bytes, int]] = [] # pub key, amount
         self.sigs: List[bytes] = []
         self.reqd: List[bytes] = []
+        self.invalidations = []
 
     def add_input(self, from_addr: RSAPublicKey, amount: int):
         self.inputs.append((from_addr.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
@@ -33,6 +34,7 @@ class Tx:
         self.sigs.append(newsig)
 
     def is_valid(self):
+        self.invalidations = []
         if self.type == TxType.Reward:
             return self.is_reward_valid()
         else:
@@ -41,6 +43,7 @@ class Tx:
     def is_reward_valid(self):
         if len(self.inputs) == 0 and len(self.outputs) == 1:
             return True
+        self.invalidations.append("Reward transaction must have exactly one output.")
         return False
 
     def is_regular_transaction_valid(self):
@@ -48,23 +51,28 @@ class Tx:
         total_out = sum(amount for _, amount in self.outputs)
 
         if total_out > total_in:
+            self.invalidations.append("Total output is greater than total input.")
             return False
 
         if not all(self.is_input_valid(addr) for addr, _ in self.inputs):
+            self.invalidations.append("Input signature is invalid.")
             return False
 
         if not all(self.is_required_signature_valid(addr) for addr in self.reqd):
+            self.invalidations.append("Required signature is invalid.")
             return False
 
         return True
 
     def is_input_valid(self, addr):
+        addr = load_pem_public_key(addr, backend=default_backend())
         for s in self.sigs:
             if verify(self.__gather(), s, addr):
                 return True
         return False
 
     def is_required_signature_valid(self, addr):
+        addr = load_pem_public_key(addr, backend=default_backend())
         for s in self.sigs:
             if verify(self.__gather(), s, addr):
                 return True
@@ -106,8 +114,6 @@ class Tx:
         return str(self).encode("utf-8")
 
     def calc_tx_fee(self):
-        if self.type == TxType.Reward:
-            total_in = sum(amount for _, amount in self.inputs)
-            total_out = sum(amount for _, amount in self.outputs)
-            return max(0, total_in - total_out)
-        return 0
+        total_in = sum(amount for _, amount in self.inputs)
+        total_out = sum(amount for _, amount in self.outputs)
+        return max(0, total_in - total_out)

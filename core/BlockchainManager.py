@@ -55,5 +55,8 @@ class BlockchainManager:
     def get_transaction_builder(self) -> Tx:
         return Tx()
 
+    def read_transaction(self, idx) -> Tx:
+        return self.tx_pool.transactions[idx][1]
+
     def make_transaction(self, tx: Tx):
         self.tx_pool.push(tx)

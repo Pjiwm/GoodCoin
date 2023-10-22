@@ -3,6 +3,8 @@ from cli.Utils import clear_screen
 from tabulate import tabulate
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.backends import default_backend
 
 
 def address_book():
@@ -31,6 +33,49 @@ def address_book():
             page = 1
 
 
+def show_tx_pool():
+    swapped_dict = {v.public_bytes(
+    Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
+    index = 0
+    while True:
+        clear_screen()
+
+        transaction = manager.read_transaction(index)
+        data = []
+        for input in transaction.inputs:
+            record = swapped_dict[input[0]], -input[1]
+            data.append(record)
+        for output in transaction.outputs:
+            record = swapped_dict[output[0]], output[1]
+            data.append(record)
+        data.append(("---", "---"))
+        for reqd in transaction.reqd:
+            record = swapped_dict[reqd], "required signature"
+            data.append(record)
+        data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+
+        table = tabulate(data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
+        print(table)
+        if not transaction.is_valid():
+            print("Invalid transaction:")
+            for error in transaction.invalidations:
+                print(" -",error)
+        print(f"Transaction {index+1}/{len(manager.tx_pool.transactions)}")
+
+        table_options = ["Next Transaction", "Previous Transaction", "Back"]
+        option = inquirer.select(
+            "Adress book", choices=table_options).execute()
+        if option == table_options[0]:
+            index += 1
+        elif option == table_options[1]:
+            index -= 1
+        else:
+            return
+
+        if index >= len(manager.tx_pool.transactions) or index < 0:
+            index = 0
+
+
 def transact():
     clear_screen()
     tx = manager.get_transaction_builder()
@@ -54,7 +99,8 @@ def transact():
         tx.add_input(manager.pub_k, coins + transaction_fee)
         tx.add_output(manager.address_book[recipient], coins)
 
-        choices = ["Add a required signature", "Cancel transaction", "Try again", "Proceed"]
+        choices = ["Add a required signature",
+                   "Cancel transaction", "Try again", "Proceed"]
         next_step = inquirer.select(
             "Please select what to do next", choices=choices).execute()
         if next_step == choices[0]:
@@ -86,6 +132,7 @@ def transaction_menu():
         menu_mapping = {
             "Address Book": address_book,
             "Make transaction": transact,
+            "Transaction Pool": show_tx_pool,
             "Back": None
         }
         option = inquirer.select(
