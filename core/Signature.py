@@ -42,7 +42,8 @@ def generate_keys() -> Tuple[RSAPrivateKey, RSAPublicKey]:
     return private_key, public_key
 
 
-def sign(message: bytes, private_key: RSAPrivateKey) -> bytes:
+def sign(message, private_key: RSAPrivateKey) -> bytes:
+    message = bytes(str(message), 'utf-8')
     return private_key.sign(
         message,
         padding.PSS(
@@ -53,8 +54,9 @@ def sign(message: bytes, private_key: RSAPrivateKey) -> bytes:
     )
 
 
-def verify(message: bytes, signature: bytes, public_key: RSAPublicKey) -> bool:
+def verify(message, signature: bytes, public_key: RSAPublicKey) -> bool:
     try:
+        message = bytes(str(message), 'utf-8')
         public_key.verify(
             signature,
             message,
@@ -124,6 +126,14 @@ def load_address_book() -> Dict[str, RSAPublicKey]:
         return {}
 
 
+def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
+    return {
+        name: key.public_bytes(encoding=serialization.Encoding.PEM,
+                               format=serialization.PublicFormat.SubjectPublicKeyInfo
+                               )
+        for (name, key) in dict.items()
+    }
+
 def string_hash(message: str) -> str:
     digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
     digest.update(bytes(message, 'utf8'))
@@ -133,11 +143,3 @@ def string_hash(message: str) -> str:
 def username_available(name: str) -> bool:
     file_path = os.path.join(USER_PATH, name + ".pem")
     return not os.path.isfile(file_path)
-
-def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
-    return {
-        name: key.public_bytes(encoding=serialization.Encoding.PEM,
-                               format=serialization.PublicFormat.SubjectPublicKeyInfo
-                               )
-        for (name, key) in dict.items()
-    }

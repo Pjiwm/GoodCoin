@@ -1,7 +1,7 @@
 import re
 from core import Signature
 from core.TxPool import TxPool
-from core.Transaction import TxBuilder, Tx
+from core.Transaction import Tx
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from typing import Dict
 
@@ -52,8 +52,8 @@ class BlockchainManager:
         self.priv_key = None
         self.pub_k = None
 
-    def get_transaction_builder() -> TxBuilder:
-        return TxBuilder()
+    def get_transaction_builder(self) -> Tx:
+        return Tx()
 
-    def make_transaction(tx: Tx):
-        TxPool.push(tx)
+    def make_transaction(self, tx: Tx):
+        self.tx_pool.push(tx)

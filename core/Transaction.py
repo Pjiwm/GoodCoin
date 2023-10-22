@@ -4,25 +4,28 @@ from optparse import AmbiguousOptionError
 from core.Signature import *
 from core.TxType import TxType
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.backends import default_backend
 from typing import List
 
 
 class Tx:
     def __init__(self, type=TxType.Normal):
         self.type = type
-        self.inputs: List[Tuple[RSAPublicKey, int]] = []
-        self.outputs: List[Tuple[RSAPublicKey, int]] = []
+        self.inputs: List[Tuple[bytes, int]] = [] # pub key, amount
+        self.outputs: List[Tuple[bytes, int]] = [] # pub key, amount
         self.sigs: List[bytes] = []
-        self.reqd: List[RSAPublicKey] = []
+        self.reqd: List[bytes] = []
 
     def add_input(self, from_addr: RSAPublicKey, amount: int):
-        self.inputs.append((from_addr, amount))
+        self.inputs.append((from_addr.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
 
-    def add_output(self, to_addr, amount):
-        self.outputs.append((to_addr, amount))
+    def add_output(self, to_addr: RSAPublicKey, amount):
+        self.outputs.append((to_addr.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
 
-    def add_reqd(self, addr):
-        self.reqd.append(addr)
+    def add_reqd(self, addr: RSAPublicKey):
+        self.reqd.append(addr.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo))
 
     def sign(self, private: RSAPrivateKey):
         message = self.__gather()
@@ -78,15 +81,18 @@ class Tx:
 
         repr_str = "INPUTS:\n"
         for addr, amt in self.inputs:
-            repr_str = repr_str + str(amt) + "from" + str(addr) + "\n"
+            public_key = load_pem_public_key(addr, backend=default_backend())
+            repr_str = repr_str + str(amt) + "from" + str(public_key) + "\n"
 
         repr_str += "OUTPUTS:\n"
         for addr, amt in self.outputs:
-            repr_str = repr_str + str(amt) + "to" + str(addr) + "\n"
+            public_key = load_pem_public_key(addr, backend=default_backend())
+            repr_str = repr_str + str(amt) + "to" + str(public_key) + "\n"
 
         repr_str += "EXTRA REQUIRED SIGNATURES:\n"
         for req_sig in self.reqd:
-            repr_str = repr_str + str(req_sig) + "\n"
+            public_key = load_pem_public_key(req_sig, backend=default_backend())
+            repr_str = repr_str + str(public_key) + "\n"
 
         repr_str += "SIGNATURES:\n"
         for sig in self.sigs:
@@ -96,35 +102,12 @@ class Tx:
 
         return repr_str
 
+    def __bytes__(self):
+        return str(self).encode("utf-8")
+
     def calc_tx_fee(self):
         if self.type == TxType.Reward:
             total_in = sum(amount for _, amount in self.inputs)
             total_out = sum(amount for _, amount in self.outputs)
             return max(0, total_in - total_out)
         return 0
-
-
-class TxBuilder:
-    def __init__(self, tx_type=TxType.Normal):
-        self.tx = Tx(tx_type)
-
-    def add_input(self, from_addr: RSAPublicKey, amount: int):
-        self.tx.inputs.append((from_addr, amount))
-        return self
-
-    def add_output(self, to_addr: RSAPublicKey, amount: int):
-        self.tx.outputs.append((to_addr, amount))
-        return self
-
-    def add_reqd(self, addr: RSAPublicKey):
-        self.tx.reqd.append(addr)
-        return self
-
-    def sign(self, private_key: RSAPrivateKey):
-        message = self.tx.__gather()
-        newsig = sign(message, private_key)
-        self.tx.sigs.append(newsig)
-        return self
-
-    def build(self):
-        return self.tx
