@@ -29,6 +29,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from typing import Tuple, Dict
 
 USER_PATH = "data/users/"
@@ -110,6 +111,9 @@ def store_in_address_book(username: str, public_key: RSAPublicKey):
     pickle.dump(loaded_address_book, file, -1)
     file.close()
 
+
+def pubk_from_bytes(addr: bytes):
+    return load_pem_public_key(addr, backend=default_backend())
 
 def load_address_book() -> Dict[str, RSAPublicKey]:
     try:

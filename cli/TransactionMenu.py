@@ -1,5 +1,5 @@
 from globals import manager
-from cli.Utils import clear_screen
+from cli.Utils import *
 from tabulate import tabulate
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator
@@ -27,16 +27,63 @@ def address_book():
         elif option == "Previous Page":
             page -= 1
         else:
-            return
+            return ""
 
         if max > len(manager.address_book.keys()) or page < 1:
             page = 1
 
 
+def cancel_transaction():
+    swapped_dict = {v.public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
+    index = 0
+    transactions = manager.tx_pool.get_users_txs(manager.pub_k)
+    if not transactions:
+        return error_message("No transactions to cancel.")
+    while True:
+        clear_screen()
+
+        transaction = transactions[index]
+        data = []
+        for input in transaction.inputs:
+            record = swapped_dict[input[0]], -input[1]
+            data.append(record)
+        for output in transaction.outputs:
+            record = swapped_dict[output[0]], output[1]
+            data.append(record)
+        data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+
+        table = tabulate(
+            data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
+        print(table)
+        if not transaction.is_valid():
+            print("Invalid transaction:")
+            for error in transaction.invalidations:
+                print(error_message(" -", error))
+        print(f"Transaction {index+1}/{len(transactions)}")
+
+        table_options = ["Next Transaction", "Previous Transaction", "Cancel Transaction", "Back"]
+        option = inquirer.select(
+            "Adress book", choices=table_options).execute()
+        if option == table_options[0]:
+            index += 1
+        elif option == table_options[1]:
+            index -= 1
+        elif option == table_options[2]:
+            return manager.tx_pool.cancel_transaction(manager.pub_k, transaction)
+        else:
+            return ""
+
+        if index >= len(transactions) or index < 0:
+            index = 0
+
+
 def show_tx_pool():
     swapped_dict = {v.public_bytes(
-    Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
     index = 0
+    if not manager.tx_pool.transactions:
+        return error_message("No transactions in pool.")
     while True:
         clear_screen()
 
@@ -54,12 +101,13 @@ def show_tx_pool():
             data.append(record)
         data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
 
-        table = tabulate(data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
+        table = tabulate(
+            data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
         print(table)
         if not transaction.is_valid():
             print("Invalid transaction:")
             for error in transaction.invalidations:
-                print(" -",error)
+                print(" -", error)
         print(f"Transaction {index+1}/{len(manager.tx_pool.transactions)}")
 
         table_options = ["Next Transaction", "Previous Transaction", "Back"]
@@ -70,11 +118,10 @@ def show_tx_pool():
         elif option == table_options[1]:
             index -= 1
         else:
-            return
+            return ""
 
         if index >= len(manager.tx_pool.transactions) or index < 0:
             index = 0
-
 
 def transact():
     clear_screen()
@@ -84,6 +131,8 @@ def transact():
         recipient = inquirer.text(
             message="To who do you want to transfer coins",
             completer=completer,
+            # validate=validate_recipient,
+            invalid_message="Invalid recipient. Please select an existing user.",
             multicolumn_complete=True,
         ).execute()
 
@@ -97,42 +146,40 @@ def transact():
             validate=NumberValidator()).execute()
         transaction_fee = round(float(transaction_fee_input), 1)
         tx.add_input(manager.pub_k, coins + transaction_fee)
-        tx.add_output(manager.address_book[recipient], coins)
+        try:
+            tx.add_output(manager.address_book[recipient], coins)
+        except:
+            tx.add_output(None, coins)
 
-        choices = ["Add a required signature",
-                   "Cancel transaction", "Try again", "Proceed"]
+        choices = ["Cancel transaction", "Try again", "Proceed"]
         next_step = inquirer.select(
             "Please select what to do next", choices=choices).execute()
         if next_step == choices[0]:
-            reqd = inquirer.text(
-                message="Select who needs to sign the transaction",
-                completer=completer,
-                multicolumn_complete=True,
-            ).execute()
-            tx.add_reqd(manager.address_book[reqd])
-        elif next_step == choices[1]:
             return
-        elif next_step == choices[2]:
+        elif next_step == choices[1]:
             continue
         tx.sign(manager.priv_key)
         manager.make_transaction(tx)
-        return
+        return success_message("Transaction completed.")
 
 
 def transaction_menu():
+    msg = ""
     while True:
         title = """
-        ████████ ██████   █████  ███    ██ ███████  █████   ██████ ████████ ██  ██████  ███    ██ ███████ 
-           ██    ██   ██ ██   ██ ████   ██ ██      ██   ██ ██         ██    ██ ██    ██ ████   ██ ██      
-           ██    ██████  ███████ ██ ██  ██ ███████ ███████ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
-           ██    ██   ██ ██   ██ ██  ██ ██      ██ ██   ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
-           ██    ██   ██ ██   ██ ██   ████ ███████ ██   ██  ██████    ██    ██  ██████  ██   ████ ███████ 
+████████ ██████   █████  ███    ██ ███████  █████   ██████ ████████ ██  ██████  ███    ██ ███████ 
+   ██    ██   ██ ██   ██ ████   ██ ██      ██   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+   ██    ██████  ███████ ██ ██  ██ ███████ ███████ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+   ██    ██   ██ ██   ██ ██  ██ ██      ██ ██   ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+   ██    ██   ██ ██   ██ ██   ████ ███████ ██   ██  ██████    ██    ██  ██████  ██   ████ ███████ 
         """
-        print(title)
+        print(unique_message(title))
+        print(msg)
         menu_mapping = {
             "Address Book": address_book,
             "Make transaction": transact,
             "Transaction Pool": show_tx_pool,
+            "Cancel transaction": cancel_transaction,
             "Back": None
         }
         option = inquirer.select(
@@ -140,7 +187,7 @@ def transaction_menu():
         clear_screen()
         result = menu_mapping.get(option)
         if result is not None:
-            result()
+            msg = result()
             clear_screen()
         else:
             return

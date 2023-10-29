@@ -1,7 +1,7 @@
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from typing import NewType, List
-from Transaction import Tx
+from core.Transaction import Tx
 CBlockSelf = NewType('CBlockSelf', 'CBlock')
 
 class CBlock:

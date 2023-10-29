@@ -2,6 +2,7 @@ import re
 from core import Signature
 from core.TxPool import TxPool
 from core.Transaction import Tx
+from core.TxBlock import TxBlock
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from typing import Dict
 
@@ -12,6 +13,7 @@ class BlockchainManager:
     tx_pool: TxPool
     username: str
     address_book: Dict[str, RSAPublicKey]
+    block: TxBlock
 
     def __init__(self):
         self.priv_key = None
@@ -19,6 +21,7 @@ class BlockchainManager:
         self.username = None
         self.tx_pool = TxPool()
         self.address_book = Signature.load_address_book()
+        self.block = TxBlock(None, None, load_from_disk=True)
 
     def register_user(self, username: str, pw: str):
         if not Signature.username_available(username):
@@ -56,7 +59,17 @@ class BlockchainManager:
         return Tx()
 
     def read_transaction(self, idx) -> Tx:
-        return self.tx_pool.transactions[idx][1]
+        result = self.tx_pool.transactions[idx][1]
+        if result:
+            return result
+        return []
 
     def make_transaction(self, tx: Tx):
         self.tx_pool.push(tx)
+
+    def get_block(self, prev_idx):
+        block = self.block
+        while prev_idx != 0:
+            block = block.prev_block
+            prev_idx -= 1
+        return block

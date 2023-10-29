@@ -2,6 +2,7 @@ import sys
 from cli.Utils import *
 from InquirerPy import inquirer
 from cli.TransactionMenu import *
+from cli.BlockchainMenu import *
 from globals import manager
 
 
@@ -64,16 +65,20 @@ def menu():
 ██    ██ ██    ██ ██    ██ ██   ██     ██      ██    ██ ██ ██  ██ ██ 
  ██████   ██████   ██████  ██████       ██████  ██████  ██ ██   ████
     """
-    print(title)
+    print(unique_message(title))
     menu_mapping = {}
     if manager.username:
         print(f"Welcome {manager.username}!")
         menu_mapping["Transactions"] = transaction_menu
         menu_mapping["Logout"] = logout
         menu_mapping["Exit"] = exit
+        menu_mapping["Explore Blockchain"] = show_blocks
+        for msg in auto_update():
+            print(msg)
     else:
         menu_mapping["Register"] = register
         menu_mapping["Login"] = login
+        menu_mapping["Explore Blockchain"] = show_blocks
         menu_mapping["Exit"] = exit
     option = inquirer.select(
         "Main Menu", choices=menu_mapping.keys()).execute()

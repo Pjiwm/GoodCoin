@@ -1,28 +1,70 @@
-from CBlock import CBlock, CBlockSelf
-from Signature import generate_keys, sign, verify
+from core.CBlock import CBlock, CBlockSelf
+from core.Signature import generate_keys, sign, verify, pubk_from_bytes
+from core.TxType import TxType
+from core.Transaction import Tx
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
-from TxType import TxType
-from Transaction import Tx
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import random
+import pickle
+from typing import List, Tuple
 
 LEADING_ZEROS = 2
 NEXT_CHAR_LIMIT = 20
 
 
 class TxBlock (CBlock):
+    id = 0
+    miner = None
+    nonce = "A random nonce"
+    # RSAPublicKey, encrypted hash
+    invalid_flags: List[Tuple[bytes, bytes]] = []
+    valid_flags: List[Tuple[bytes, bytes]] = []
 
-    def __init__(self, previousBlock: CBlockSelf):
-        self.nonce = "A random nonce"
-        super(TxBlock, self).__init__([], previousBlock)
+    def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey, load_from_disk=False):
+        if load_from_disk:
+            # self = self.__load_block()
+            loaded_block = self.__load_block()
+            if loaded_block:
+            # Update the current instance with the loaded block's attributes
+                self.__dict__.update(loaded_block.__dict__)
+        else:
+            xd = Tx()
+            s = []
+            s.append(xd)
+            super(TxBlock, self).__init__(s, previousBlock)
+            self.id = previousBlock.id + 1 if previousBlock else 0
+            self.__store_block()
+            self.miner = miner.public_bytes(
+                Encoding.PEM, PublicFormat.SubjectPublicKeyInfo) if miner else None
 
-    def addTx(self, Tx_in: Tx):
+    def add_flag(self, private: RSAPublicKey, public: RSAPublicKey):
+        pubk = public.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        signed_hash = sign(self.computeHash(), private)
+        if self.is_valid() and self.good_nonce():
+            self.valid_flags.append((pubk, signed_hash))
+        else:
+            self.invalid_flags.append((pubk, signed_hash))
+
+    def count_valid_flags(self):
+        return sum(1 for bytes, msg in self.valid_flags if verify(msg, pubk_from_bytes(bytes), self.computeHash()))
+
+    def count_invalid_flags(self):
+        return sum(1 for bytes, msg in self.invalid_flags if verify(msg, pubk_from_bytes(bytes), self.computeHash()))
+
+    def add_tx(self, Tx_in: Tx):
         self.data.append(Tx_in)
 
     def __count_totals(self):
         total_in = sum(amt for tx in self.data for _, amt in tx.inputs)
         total_out = sum(amt for tx in self.data for _, amt in tx.outputs)
         return total_in, total_out
+
+    def invalid_id(self):
+        if self.id != self.previousBlock.id + 1:
+            return True
 
     def invalid_reward(self):
         total_in, total_out = self.__count_totals()
@@ -42,6 +84,9 @@ class TxBlock (CBlock):
         # Check reward
         if self.invalid_reward():
             return False
+        # Check if id is correct
+        if self.invalid_id():
+            return False
 
         # Check if tampered
         if self.blockHash:
@@ -59,8 +104,26 @@ class TxBlock (CBlock):
         self.blockHash = self.__hash_nonce()
         return self.nonce
 
+    def get_mining_reward(self):
+        sum(tx.calc_tx_fee() for tx in self.data) + TxType.RewardValue
+
     def __hash_nonce(self):
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(self.nonce), 'utf8'))
         digest.update(bytes(str(self.computeHash().hex()), 'utf8'))
         return digest.finalize()
+
+    def __store_block(self):
+        file = open("data/blockchain.dat", 'ab')
+        pickle.dump(self, file)
+        file.close()
+
+    def __load_block(self):
+        try:
+            file = open("data/blockchain.dat", 'rb')
+            block = pickle.load(file)
+            file.close()
+            return block
+        except:
+            # The Genesis Block
+            return self.__init__(None, None)
