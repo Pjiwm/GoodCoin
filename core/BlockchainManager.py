@@ -86,9 +86,9 @@ class BlockchainManager:
         if new_block.good_nonce():
             self.block = new_block
             self.__store_block()
-            return f"Mined new block {new_block.computeHash().hex()} with nonce: {nonce}"
+            return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
-            return f"Failed to mine block {new_block.computeHash().hex()} with nonce: {nonce}"
+            return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
 
     def __load_block(self):
         try:
@@ -98,7 +98,9 @@ class BlockchainManager:
             return block
         except:
             # The Genesis Block
-            return TxBlock(None, None)
+            genesis = TxBlock(None, None)
+            genesis.find_nonce()
+            return genesis
 
     def __store_block(self):
         file = open("data/blockchain.dat", 'wb')

@@ -9,23 +9,22 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import random
 from typing import List, Tuple
 
-LEADING_ZEROS = 2
-NEXT_CHAR_LIMIT = 20
+leading_zeros = 2
+next_char_limit = 20
 
 
 class TxBlock (CBlock):
-    id = 0
-    miner = None
-    nonce = "A random nonce"
+    error = ""
     # RSAPublicKey, encrypted hash as bytes
     invalid_flags: List[Tuple[bytes, bytes]] = []
     valid_flags: List[Tuple[bytes, bytes]] = []
 
     def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
-            super(TxBlock, self).__init__([], previousBlock)
-            self.id = previousBlock.id + 1 if previousBlock else 0
-            self.miner = miner.public_bytes(
-                Encoding.PEM, PublicFormat.SubjectPublicKeyInfo) if miner else None
+        self.nonce = "A random nonce"
+        self.id = previousBlock.id + 1 if previousBlock else 0
+        self.miner = miner.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo) if miner else None
+        super(TxBlock, self).__init__([], previousBlock)
 
     def add_flag(self, private: RSAPublicKey, public: RSAPublicKey):
         pubk = public.public_bytes(
@@ -51,6 +50,9 @@ class TxBlock (CBlock):
         return total_in, total_out
 
     def invalid_id(self):
+        if not self.previous_block:
+            return False
+
         if self.id != self.previous_block.id + 1:
             return True
 
@@ -64,31 +66,36 @@ class TxBlock (CBlock):
     def is_valid(self):
         # Check previous hash
         if not super(TxBlock, self).is_valid():
+            self.error = "Previous hash is invalid."
             return False
         # Check Transactions
         for tx in self.data:
             if not tx.is_valid():
+                self.error = "Transaction is invalid."
                 return False
         # Check reward
         if self.invalid_reward():
+            self.error = "Reward is invalid."
             return False
         # Check if id is correct
         if self.invalid_id():
+            self.error = "Block id is invalid."
             return False
 
         # Check if tampered
         if self.block_hash:
-            return self.__hash_nonce().hex() == self.block_hash.hex()
+            if not self.__hash_nonce().hex() == self.block_hash.hex():
+                self.error = "Block has been tampered with."
+                return False
         return True
 
     def good_nonce(self):
-        block_hash = self.__hash_nonce().hex()
-        return block_hash[:LEADING_ZEROS] == '0' * LEADING_ZEROS
+        hash = self.__hash_nonce().hex()
+        return hash[:leading_zeros] == '0' * leading_zeros
 
     def find_nonce(self):
         while not self.good_nonce():
-            self.nonce = ''.join(random.choice('0123456789ABCDEF')
-                                 for _ in range(NEXT_CHAR_LIMIT))
+            self.nonce = ''.join(random.choice('0123456789ABCDEF') for _ in range(next_char_limit))
         self.block_hash = self.__hash_nonce()
         return self.nonce
 

@@ -8,10 +8,10 @@ class CBlock:
 
     data: List[Tx] = None
     previous_hash: bytes = None
-    block_hash: bytes = None
     previous_block: CBlockSelf = None
-    def __init__(self, data, previousBlock: CBlockSelf):
+    def __init__(self, data, previousBlock):
         self.data = data
+        self.block_hash: bytes = None
         self.previous_block = previousBlock
         if previousBlock != None:
             self.previous_hash = previousBlock.computeHash()

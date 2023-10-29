@@ -132,7 +132,6 @@ def transact():
         recipient = inquirer.text(
             message="To who do you want to transfer coins",
             completer=completer,
-            # validate=validate_recipient,
             invalid_message="Invalid recipient. Please select an existing user.",
             multicolumn_complete=True,
         ).execute()

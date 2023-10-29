@@ -108,18 +108,15 @@ class Tx:
 
         repr_str = "INPUTS:\n"
         for addr, amt in self.inputs:
-            public_key = pubk_from_bytes(addr)
-            repr_str = repr_str + str(amt) + "from" + str(public_key) + "\n"
+            repr_str = repr_str + str(amt) + "from" + str(addr) + "\n"
 
         repr_str += "OUTPUTS:\n"
         for addr, amt in self.outputs:
-            public_key = pubk_from_bytes(addr)
-            repr_str = repr_str + str(amt) + "to" + str(public_key) + "\n"
+            repr_str = repr_str + str(amt) + "to" + str(addr) + "\n"
 
         repr_str += "EXTRA REQUIRED SIGNATURES:\n"
         for req_sig in self.reqd:
-            public_key = pubk_from_bytes(req_sig)
-            repr_str = repr_str + str(public_key) + "\n"
+            repr_str = repr_str + str(addr) + "\n"
 
         repr_str += "SIGNATURES:\n"
         for sig in self.sigs:

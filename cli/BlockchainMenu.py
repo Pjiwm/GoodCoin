@@ -45,14 +45,15 @@ def show_blocks():
             miner_name = swapped_dict[block.miner]
             tx_table.append((miner_name, block.get_mining_reward()))
             block_table.append(("Nonce", block.nonce))
-            block_table.append(("Hash", block.computeHash().hex()))
+            block_table.append(("Hash", block.block_hash.hex()))
             block_table.append(("Previous Hash", block.previous_hash.hex()))
             block_table.append(("Valid block", block.is_valid()))
             block_table.append((
                 "Validation flags", f"Valid: {block.count_valid_flags()} Invalid: {block.count_valid_flags()}"))
         else:
-            block_table.append(("Hash", block.computeHash().hex()))
             block_table.append(("Nonce", block.nonce))
+            block_table.append(("Hash", block.block_hash.hex()))
+            block_table.append(("Valid block", block.is_valid()))
             block_table.append(("Genesis Block", True))
         tx_tabulate = tabulate(
             tx_table, headers=["Block 🧱", f"ID: {block.id}"], tablefmt="fancy_grid")
@@ -60,6 +61,7 @@ def show_blocks():
         print(tx_tabulate)
         print("\n")
         print(block_tabulate)
+        print(error_message(block.error))
         print(f"Block #{block.id}")
 
         table_options = ["Previous Block", "Next Block", "Back"]
