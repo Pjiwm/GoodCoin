@@ -69,6 +69,7 @@ def menu():
     menu_mapping = {}
     if manager.username:
         print(f"Welcome {manager.username}!")
+        print(f"Balance: GC {manager.calculate_balance()}")
         menu_mapping["Transactions"] = transaction_menu
         menu_mapping["Logout"] = logout
         menu_mapping["Explore Blockchain"] = show_blocks

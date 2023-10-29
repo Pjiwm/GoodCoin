@@ -6,7 +6,8 @@ from core.TxBlock import TxBlock
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from typing import Dict
 import pickle
-
+STARTED_BALANCE = 50
+REQUIRED_VALID_FLAGS = 3
 class BlockchainManager:
     priv_key: RSAPrivateKey
     pub_k: RSAPublicKey
@@ -89,6 +90,9 @@ class BlockchainManager:
             return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
+
+    def calculate_balance(self):
+        return self.block.user_balance(self.pub_k)
 
     def __load_block(self):
         try:

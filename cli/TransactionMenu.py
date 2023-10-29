@@ -174,6 +174,7 @@ def transaction_menu():
    ██    ██   ██ ██   ██ ██   ████ ███████ ██   ██  ██████    ██    ██  ██████  ██   ████ ███████ 
         """
         print(unique_message(title))
+        print(f"Balance: GC {manager.calculate_balance()}")
         print(msg)
         menu_mapping = {
             "Address Book": address_book,

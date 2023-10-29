@@ -62,6 +62,10 @@ class Tx:
         return False
 
     def is_regular_transaction_valid(self):
+        if self.has_negative_amount():
+            self.invalidations.append("Amount cannot be negative.")
+            return False
+
         output_keys = all(item is not None for item, _ in self.outputs)
         if not output_keys:
             self.invalidations.append("Output or output key is invalid.")
@@ -89,6 +93,13 @@ class Tx:
         for s in self.sigs:
             if verify(self.__gather(), s, pubk_from_bytes(addr)):
                 return True
+        return False
+
+    def has_negative_amount(self):
+        if any(amount < 0 for _, amount in self.inputs):
+            return True
+        if any(amount < 0 for _, amount in self.outputs):
+            return True
         return False
 
     def is_required_signature_valid(self, addr):

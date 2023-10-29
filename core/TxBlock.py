@@ -9,9 +9,10 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import random
 from typing import List, Tuple
 
-leading_zeros = 2
-next_char_limit = 20
-
+LEADING_ZEROS = 2
+NEXT_CHAR_LIMIT = 20
+STARTED_BALANCE = 50
+REQUIRED_VALID_FLAGS = 3
 
 class TxBlock (CBlock):
     error = ""
@@ -89,13 +90,25 @@ class TxBlock (CBlock):
                 return False
         return True
 
+    def user_balance(self, user: RSAPublicKey):
+        balance = STARTED_BALANCE
+        block = self
+        while block.is_valid() and block.count_valid_flags() >= REQUIRED_VALID_FLAGS:
+            for tx in block.data:
+                if tx.sender == self.pub_k:
+                    balance -= tx.amount
+                if tx.receiver == self.pub_k:
+                    balance += tx.amount
+            block = block.previous_block
+        return balance
+
     def good_nonce(self):
         hash = self.__hash_nonce().hex()
-        return hash[:leading_zeros] == '0' * leading_zeros
+        return hash[:LEADING_ZEROS] == '0' * LEADING_ZEROS
 
     def find_nonce(self):
         while not self.good_nonce():
-            self.nonce = ''.join(random.choice('0123456789ABCDEF') for _ in range(next_char_limit))
+            self.nonce = ''.join(random.choice('0123456789ABCDEF') for _ in range(NEXT_CHAR_LIMIT))
         self.block_hash = self.__hash_nonce()
         return self.nonce
 
