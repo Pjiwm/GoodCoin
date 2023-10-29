@@ -7,22 +7,22 @@ CBlockSelf = NewType('CBlockSelf', 'CBlock')
 class CBlock:
 
     data: List[Tx] = None
-    previousHash: bytes = None
-    blockHash: bytes = None
-    previousBlock: CBlockSelf = None
+    previous_hash: bytes = None
+    block_hash: bytes = None
+    previous_block: CBlockSelf = None
     def __init__(self, data, previousBlock: CBlockSelf):
         self.data = data
-        self.previousBlock = previousBlock
+        self.previous_block = previousBlock
         if previousBlock != None:
-            self.previousHash = previousBlock.computeHash()
+            self.previous_hash = previousBlock.computeHash()
 
     def computeHash(self) -> bytes:
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(self.data),'utf8'))
-        digest.update(bytes(str(self.previousHash),'utf8'))
+        digest.update(bytes(str(self.previous_hash),'utf8'))
         return digest.finalize()
 
     def is_valid(self):
-        if self.previousBlock == None:
+        if self.previous_block == None:
             return True
-        return self.previousBlock.computeHash() == self.previousHash
+        return self.previous_block.computeHash() == self.previous_hash

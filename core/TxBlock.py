@@ -1,5 +1,5 @@
 from core.CBlock import CBlock, CBlockSelf
-from core.Signature import generate_keys, sign, verify, pubk_from_bytes
+from core.Signature import sign, verify, pubk_from_bytes
 from core.TxType import TxType
 from core.Transaction import Tx
 from cryptography.hazmat.primitives import hashes
@@ -7,7 +7,6 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import random
-import pickle
 from typing import List, Tuple
 
 LEADING_ZEROS = 2
@@ -18,24 +17,13 @@ class TxBlock (CBlock):
     id = 0
     miner = None
     nonce = "A random nonce"
-    # RSAPublicKey, encrypted hash
+    # RSAPublicKey, encrypted hash as bytes
     invalid_flags: List[Tuple[bytes, bytes]] = []
     valid_flags: List[Tuple[bytes, bytes]] = []
 
-    def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey, load_from_disk=False):
-        if load_from_disk:
-            # self = self.__load_block()
-            loaded_block = self.__load_block()
-            if loaded_block:
-            # Update the current instance with the loaded block's attributes
-                self.__dict__.update(loaded_block.__dict__)
-        else:
-            xd = Tx()
-            s = []
-            s.append(xd)
-            super(TxBlock, self).__init__(s, previousBlock)
+    def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
+            super(TxBlock, self).__init__([], previousBlock)
             self.id = previousBlock.id + 1 if previousBlock else 0
-            self.__store_block()
             self.miner = miner.public_bytes(
                 Encoding.PEM, PublicFormat.SubjectPublicKeyInfo) if miner else None
 
@@ -63,14 +51,14 @@ class TxBlock (CBlock):
         return total_in, total_out
 
     def invalid_id(self):
-        if self.id != self.previousBlock.id + 1:
+        if self.id != self.previous_block.id + 1:
             return True
 
     def invalid_reward(self):
         total_in, total_out = self.__count_totals()
 
         tx_balance = round(total_out - total_in, 10)
-        if tx_balance > TxType.RewardValue:
+        if tx_balance > TxType.RewardValue.value:
             return True
 
     def is_valid(self):
@@ -89,8 +77,8 @@ class TxBlock (CBlock):
             return False
 
         # Check if tampered
-        if self.blockHash:
-            return self.__hash_nonce().hex() == self.blockHash.hex()
+        if self.block_hash:
+            return self.__hash_nonce().hex() == self.block_hash.hex()
         return True
 
     def good_nonce(self):
@@ -101,29 +89,14 @@ class TxBlock (CBlock):
         while not self.good_nonce():
             self.nonce = ''.join(random.choice('0123456789ABCDEF')
                                  for _ in range(NEXT_CHAR_LIMIT))
-        self.blockHash = self.__hash_nonce()
+        self.block_hash = self.__hash_nonce()
         return self.nonce
 
     def get_mining_reward(self):
-        sum(tx.calc_tx_fee() for tx in self.data) + TxType.RewardValue
+        return sum(tx.calc_tx_fee() for tx in self.data) + TxType.RewardValue.value
 
     def __hash_nonce(self):
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(self.nonce), 'utf8'))
         digest.update(bytes(str(self.computeHash().hex()), 'utf8'))
         return digest.finalize()
-
-    def __store_block(self):
-        file = open("data/blockchain.dat", 'ab')
-        pickle.dump(self, file)
-        file.close()
-
-    def __load_block(self):
-        try:
-            file = open("data/blockchain.dat", 'rb')
-            block = pickle.load(file)
-            file.close()
-            return block
-        except:
-            # The Genesis Block
-            return self.__init__(None, None)

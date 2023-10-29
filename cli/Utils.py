@@ -16,10 +16,10 @@ def auto_update():
 
 
 def error_message(string: str):
-    return Fore.RED + string + Style.RESET_ALL
+    return Fore.RED + string + Style.RESET_ALL if string else ""
 
 def success_message(string: str):
-    return Fore.GREEN + string + Style.RESET_ALL
+    return Fore.GREEN + string + Style.RESET_ALL if string else ""
 
 def unique_message(string: str):
-    return Fore.MAGENTA + string + Style.RESET_ALL
+    return Fore.MAGENTA + string + Style.RESET_ALL if string else ""

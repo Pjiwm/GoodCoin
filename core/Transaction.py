@@ -19,6 +19,9 @@ class Tx:
         self.reqd: List[bytes] = []
         self.invalidations = []
 
+    def __lt__(self, other):
+        return -self.calc_tx_fee() < -other.calc_tx_fee()
+
     def add_input(self, from_addr: RSAPublicKey, amount: int):
         self.inputs.append((from_addr.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))

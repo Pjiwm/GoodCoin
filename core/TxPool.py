@@ -9,14 +9,13 @@ TRASH_STORE_PATH = "data/txtrashpool.dat"
 
 class TxPool:
     def __init__(self):
-        self.transactions: List[(float, Tx)] = self.__load_from_disk()
+        self.transactions: List[Tx] = self.__load_from_disk()
         self.invalid_transactions: List[Tx] = self.__load_from_disk(
             TRASH_STORE_PATH)
 
     def push(self, tx: Tx):
         if tx.is_valid():
-            reward_remainder = tx.calc_tx_fee()
-            heapq.heappush(self.transactions, (-reward_remainder, tx))
+            heapq.heappush(self.transactions, tx)
             self.__write_to_disk()
             return "Successfully added transaction to pool."
         else:
@@ -26,7 +25,9 @@ class TxPool:
 
     def pop(self):
         if self.transactions:
-            return heapq.heappop(self.transactions)[1]
+            popped = heapq.heappop(self.transactions)
+            self.__write_to_disk()
+            return popped
         else:
             return None
 
@@ -37,17 +38,18 @@ class TxPool:
         if prior_length != len(self.invalid_transactions):
             self.__write_to_disk(TRASH_STORE_PATH)
             return "You've made some invalid transactions. They have been removed from the pool."
+        return ""
 
     def cancel_transaction(self, pubk: RSAPublicKey, tx_to_cancel: Tx):
         for tx in self.transactions:
-            if tx[1].is_tx_author(pubk):
+            if tx.is_tx_author(pubk) and tx_to_cancel == tx :
                 self.transactions.remove(tx)
                 self.__write_to_disk()
                 return "Transaction has been canceled."
         return "Transaction not found or you don't have permission to cancel it."
 
     def get_users_txs(self, pubk: RSAPublicKey):
-        return [tx for _, tx in self.transactions if tx.is_tx_author(pubk)]
+        return [tx for tx in self.transactions if tx.is_tx_author(pubk)]
 
     def __write_to_disk(self, path=POOL_STORE_PATH):
         file = open(path, 'wb')

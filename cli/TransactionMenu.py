@@ -1,5 +1,6 @@
 from globals import manager
 from cli.Utils import *
+from core.Transaction import Tx
 from tabulate import tabulate
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator
@@ -125,7 +126,7 @@ def show_tx_pool():
 
 def transact():
     clear_screen()
-    tx = manager.get_transaction_builder()
+    tx = Tx()
     while True:
         completer = {k: None for k, _ in manager.address_book.items()}
         recipient = inquirer.text(

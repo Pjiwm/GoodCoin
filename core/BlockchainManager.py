@@ -5,7 +5,7 @@ from core.Transaction import Tx
 from core.TxBlock import TxBlock
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from typing import Dict
-
+import pickle
 
 class BlockchainManager:
     priv_key: RSAPrivateKey
@@ -21,7 +21,7 @@ class BlockchainManager:
         self.username = None
         self.tx_pool = TxPool()
         self.address_book = Signature.load_address_book()
-        self.block = TxBlock(None, None, load_from_disk=True)
+        self.block = self.__load_block()
 
     def register_user(self, username: str, pw: str):
         if not Signature.username_available(username):
@@ -55,11 +55,8 @@ class BlockchainManager:
         self.priv_key = None
         self.pub_k = None
 
-    def get_transaction_builder(self) -> Tx:
-        return Tx()
-
     def read_transaction(self, idx) -> Tx:
-        result = self.tx_pool.transactions[idx][1]
+        result = self.tx_pool.transactions[idx]
         if result:
             return result
         return []
@@ -70,6 +67,40 @@ class BlockchainManager:
     def get_block(self, prev_idx):
         block = self.block
         while prev_idx != 0:
-            block = block.prev_block
+            block = block.previous_block
             prev_idx -= 1
         return block
+
+    def mine_block(self):
+        if len(self.tx_pool.transactions) < 5:
+            return "Not enough transactions in transaction pool to mine a new block."
+
+        new_block = TxBlock(self.block, self.pub_k)
+        while len(new_block.data) < 10:
+            tx = self.tx_pool.pop()
+            if not tx:
+                break
+            new_block.add_tx(tx)
+
+        nonce = new_block.find_nonce()
+        if new_block.good_nonce():
+            self.block = new_block
+            self.__store_block()
+            return f"Mined new block {new_block.computeHash().hex()} with nonce: {nonce}"
+        else:
+            return f"Failed to mine block {new_block.computeHash().hex()} with nonce: {nonce}"
+
+    def __load_block(self):
+        try:
+            file = open("data/blockchain.dat", 'rb')
+            block = pickle.load(file)
+            file.close()
+            return block
+        except:
+            # The Genesis Block
+            return TxBlock(None, None)
+
+    def __store_block(self):
+        file = open("data/blockchain.dat", 'wb')
+        pickle.dump(self.block, file)
+        file.close()

@@ -47,8 +47,8 @@ def login():
             break
         else:
             print(result)
-            option = inquirer.list_input(
-                "Want to try again?", choices=["Yes", "No"])
+            option = inquirer.select(
+                "Want to try again?", choices=["Yes", "No"]).execute()
             if option == "No":
                 break
 
@@ -71,8 +71,9 @@ def menu():
         print(f"Welcome {manager.username}!")
         menu_mapping["Transactions"] = transaction_menu
         menu_mapping["Logout"] = logout
-        menu_mapping["Exit"] = exit
         menu_mapping["Explore Blockchain"] = show_blocks
+        menu_mapping["Mine new block"] = mine_block
+        menu_mapping["Exit"] = exit
         for msg in auto_update():
             print(msg)
     else:
