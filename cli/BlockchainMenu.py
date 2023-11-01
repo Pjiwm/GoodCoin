@@ -47,6 +47,7 @@ def show_blocks():
             block_table.append(("Nonce", block.nonce))
             block_table.append(("Hash", block.block_hash.hex()))
             block_table.append(("Previous Hash", block.previous_hash.hex()))
+            block_table.append(("Time of mining", block.time_of_creation))
             block_table.append(("Valid block", block.is_valid()))
             block_table.append((
                 "Validation flags", f"Valid: {block.count_valid_flags()} Invalid: {block.count_valid_flags()}"))
@@ -54,6 +55,7 @@ def show_blocks():
             block_table.append(("Nonce", block.nonce))
             block_table.append(("Hash", block.block_hash.hex()))
             block_table.append(("Valid block", block.is_valid()))
+            block_table.append(("Time of mining", block.time_of_creation))
             block_table.append(("Genesis Block", True))
         tx_tabulate = tabulate(
             tx_table, headers=["Block 🧱", f"ID: {block.id}"], tablefmt="fancy_grid")

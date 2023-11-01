@@ -7,12 +7,15 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import random
+import datetime
 from typing import List, Tuple
 
 LEADING_ZEROS = 2
 NEXT_CHAR_LIMIT = 20
 STARTED_BALANCE = 50
 REQUIRED_VALID_FLAGS = 3
+MINING_TIME_GAP = 180
+
 
 class TxBlock (CBlock):
     error = ""
@@ -21,6 +24,7 @@ class TxBlock (CBlock):
     valid_flags: List[Tuple[bytes, bytes]] = []
 
     def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
+        self.time_of_creation: datetime = datetime.datetime.now()
         self.nonce = "A random nonce"
         self.id = previousBlock.id + 1 if previousBlock else 0
         self.miner = miner.public_bytes(
@@ -64,6 +68,11 @@ class TxBlock (CBlock):
         if tx_balance > TxType.RewardValue.value:
             return True
 
+    def invalid_mine_period(self):
+        if self.previous_block:
+            time_delta = datetime.timedelta(seconds=MINING_TIME_GAP)
+            return self.time_of_creation - self.previous_block.time_of_creation < time_delta
+
     def is_valid(self):
         # Check previous hash
         if not super(TxBlock, self).is_valid():
@@ -83,6 +92,11 @@ class TxBlock (CBlock):
             self.error = "Block id is invalid."
             return False
 
+        # Check if mined too fast between blocks
+        if self.invalid_mine_period():
+            self.error = "Block was mined too fast."
+            return False
+
         # Check if tampered
         if self.block_hash:
             if not self.__hash_nonce().hex() == self.block_hash.hex():
@@ -91,13 +105,15 @@ class TxBlock (CBlock):
         return True
 
     def user_balance(self, user: RSAPublicKey):
+        user_key = user.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
         balance = STARTED_BALANCE
         block = self
         while block.is_valid() and block.count_valid_flags() >= REQUIRED_VALID_FLAGS:
             for tx in block.data:
-                if tx.sender == self.pub_k:
+                if tx.sender == user_key:
                     balance -= tx.amount
-                if tx.receiver == self.pub_k:
+                if tx.receiver == user_key:
                     balance += tx.amount
             block = block.previous_block
         return balance
@@ -108,7 +124,8 @@ class TxBlock (CBlock):
 
     def find_nonce(self):
         while not self.good_nonce():
-            self.nonce = ''.join(random.choice('0123456789ABCDEF') for _ in range(NEXT_CHAR_LIMIT))
+            self.nonce = ''.join(random.choice('0123456789ABCDEF')
+                                 for _ in range(NEXT_CHAR_LIMIT))
         self.block_hash = self.__hash_nonce()
         return self.nonce
 
@@ -119,4 +136,7 @@ class TxBlock (CBlock):
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(self.nonce), 'utf8'))
         digest.update(bytes(str(self.computeHash().hex()), 'utf8'))
+        digest.update(bytes(str(self.time_of_creation), 'utf8'))
+        if self.miner:
+            digest.update(self.miner)
         return digest.finalize()
