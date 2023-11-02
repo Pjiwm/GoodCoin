@@ -71,7 +71,7 @@ class BlockchainManager:
             prev_idx -= 1
         return block
 
-    def mine_block(self):
+    def mine_block_optimal(self):
         if len(self.tx_pool.transactions) < 5:
             return "Not enough transactions in transaction pool to mine a new block."
 
@@ -108,6 +108,8 @@ class BlockchainManager:
 
         if len(self.block.valid_flags) < REQUIRED_FLAG_COUNT and not already_flagged:
             result = self.block.add_flag(self.priv_key, self.pub_k)
+            self.__store_block()
+
 
         if len(self.block.invalid_flags) == REQUIRED_FLAG_COUNT:
             self.remove_last_block()

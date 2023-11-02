@@ -19,14 +19,15 @@ MINING_TIME_GAP = 180
 
 class TxBlock (CBlock):
     error = ""
-    # RSAPublicKey, encrypted hash as bytes, is valid or invalid (bool)
-    invalid_flags: List[Tuple[bytes, bytes, bool]] = []
-    valid_flags: List[Tuple[bytes, bytes, bool]] = []
-
     def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
         self.time_of_creation: datetime = datetime.datetime.now()
         self.nonce = "A random nonce"
         self.id = previousBlock.id + 1 if previousBlock else 0
+
+        # RSAPublicKey, signature (block_hash, bool), is valid or invalid (bool)
+        self.invalid_flags: List[Tuple[bytes, bytes, bool]] = []
+        self.valid_flags: List[Tuple[bytes, bytes, bool]] = []
+
         self.miner = miner.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo) if miner else None
         super(TxBlock, self).__init__([], previousBlock)
@@ -45,8 +46,8 @@ class TxBlock (CBlock):
 
     def count_valid_flags(self):
         unique_valid_flags = list(set(self.valid_flags))
-        return sum(0 for pubk, sig, v in unique_valid_flags if
-                   verify((self.block_hash, True), sig, pubk_from_bytes(pubk)) and self.miner != pubk and v)
+        return len([v for pubk, sig, v in unique_valid_flags if
+                   verify((self.block_hash, True), sig, pubk_from_bytes(pubk)) and self.miner != pubk and v])
 
     def count_invalid_flags(self):
         unique_invalid_flags = list(set(self.invalid_flags))
@@ -78,12 +79,12 @@ class TxBlock (CBlock):
 
     def invalid_mine_period(self):
         if self.previous_block:
-            return self.mining_timeout_remainder(self.time_of_creation) < 0
+            return self.mining_timeout_remainder(self.time_of_creation) <= 0
 
     def mining_timeout_remainder(self, time: datetime):
         wait_time = datetime.timedelta(seconds=MINING_TIME_GAP)
-        time_remaining = time - self.time_of_creation - wait_time
-        return time_remaining.total_seconds()
+        time_remaining = self.time_of_creation + wait_time - time
+        return max(time_remaining.total_seconds(), 0)
 
     def is_valid(self):
         # Check previous hash
@@ -123,10 +124,12 @@ class TxBlock (CBlock):
         block = self
         while block.is_valid() and block.count_valid_flags() >= REQUIRED_FLAG_COUNT:
             for tx in block.data:
-                if tx.sender == user_key:
-                    balance -= tx.amount
-                if tx.receiver == user_key:
-                    balance += tx.amount
+                for addr, amt in tx.inputs:
+                    if addr == user_key:
+                        balance -= amt
+                for addr, amt in tx.outputs:
+                    if addr == user_key:
+                        balance += amt
             block = block.previous_block
         return balance
 
