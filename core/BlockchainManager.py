@@ -2,12 +2,11 @@ import re
 from core import Signature
 from core.TxPool import TxPool
 from core.Transaction import Tx
-from core.TxBlock import TxBlock
+from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from typing import Dict
 import pickle
-STARTED_BALANCE = 50
-REQUIRED_VALID_FLAGS = 3
 class BlockchainManager:
     priv_key: RSAPrivateKey
     pub_k: RSAPublicKey
@@ -93,6 +92,32 @@ class BlockchainManager:
 
     def calculate_balance(self):
         return self.block.user_balance(self.pub_k)
+
+    def add_flag_to_block(self):
+        if self.block.previous_block is None:
+            return
+
+        my_pubk_bytes = self.pub_k.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        if my_pubk_bytes == self.block.miner:
+            return
+
+        result = None
+        check_flag = lambda x: any(my_pubk_bytes == pubk for pubk, _, _ in x)
+        already_flagged = check_flag(self.block.invalid_flags) or check_flag(self.block.valid_flags)
+
+        if len(self.block.valid_flags) < REQUIRED_FLAG_COUNT and not already_flagged:
+            result = self.block.add_flag(self.priv_key, self.pub_k)
+
+        if len(self.block.invalid_flags) == REQUIRED_FLAG_COUNT:
+            self.remove_last_block()
+        return result
+
+    def remove_last_block(self):
+        for tx in self.block.data:
+            self.tx_pool.push(tx)
+        self.block = self.block.previous_block
+        self.__store_block()
 
     def __load_block(self):
         try:

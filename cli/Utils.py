@@ -10,8 +10,11 @@ def clear_screen():
 def auto_update():
     messages = []
     invalid_txs = error_message(manager.tx_pool.remove_invalid(manager.pub_k))
+    flag_msg = manager.add_flag_to_block()
     if invalid_txs:
-        messages.append(invalid_txs)
+        messages.append(error_message(invalid_txs))
+    if flag_msg:
+        messages.append(info_message(flag_msg))
     return messages
 
 
@@ -23,3 +26,6 @@ def success_message(string: str):
 
 def unique_message(string: str):
     return Fore.MAGENTA + string + Style.RESET_ALL if string else ""
+
+def info_message(string: str):
+    return Fore.YELLOW + string + Style.RESET_ALL if string else ""

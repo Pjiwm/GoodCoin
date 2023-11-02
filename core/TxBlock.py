@@ -12,16 +12,16 @@ from typing import List, Tuple
 
 LEADING_ZEROS = 2
 NEXT_CHAR_LIMIT = 20
-STARTED_BALANCE = 50
-REQUIRED_VALID_FLAGS = 3
+STARTING_BALANCE = 50
+REQUIRED_FLAG_COUNT = 3
 MINING_TIME_GAP = 180
 
 
 class TxBlock (CBlock):
     error = ""
-    # RSAPublicKey, encrypted hash as bytes
-    invalid_flags: List[Tuple[bytes, bytes]] = []
-    valid_flags: List[Tuple[bytes, bytes]] = []
+    # RSAPublicKey, encrypted hash as bytes, is valid or invalid (bool)
+    invalid_flags: List[Tuple[bytes, bytes, bool]] = []
+    valid_flags: List[Tuple[bytes, bytes, bool]] = []
 
     def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
         self.time_of_creation: datetime = datetime.datetime.now()
@@ -34,17 +34,25 @@ class TxBlock (CBlock):
     def add_flag(self, private: RSAPublicKey, public: RSAPublicKey):
         pubk = public.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
-        signed_hash = sign(self.computeHash(), private)
         if self.is_valid() and self.good_nonce():
-            self.valid_flags.append((pubk, signed_hash))
+            signed_data = sign((self.block_hash, True), private)
+            self.valid_flags.append((pubk, signed_data, True))
+            return "Added valid flag to block."
         else:
-            self.invalid_flags.append((pubk, signed_hash))
+            signed_data = sign((self.block_hash, False), private)
+            self.invalid_flags.append((pubk, signed_data, False))
+            return "Added invalid flag to block."
 
     def count_valid_flags(self):
-        return sum(1 for bytes, msg in self.valid_flags if verify(msg, pubk_from_bytes(bytes), self.computeHash()))
+        unique_valid_flags = list(set(self.valid_flags))
+        return sum(0 for pubk, sig, v in unique_valid_flags if
+                   verify((self.block_hash, True), sig, pubk_from_bytes(pubk)) and self.miner != pubk and v)
 
     def count_invalid_flags(self):
-        return sum(1 for bytes, msg in self.invalid_flags if verify(msg, pubk_from_bytes(bytes), self.computeHash()))
+        unique_invalid_flags = list(set(self.invalid_flags))
+        return len([v for pubk, sig, v in unique_invalid_flags if
+                    verify((self.block_hash, False), sig, pubk_from_bytes(pubk)) and self.miner != pubk and not v])
+
 
     def add_tx(self, Tx_in: Tx):
         self.data.append(Tx_in)
@@ -70,8 +78,12 @@ class TxBlock (CBlock):
 
     def invalid_mine_period(self):
         if self.previous_block:
-            time_delta = datetime.timedelta(seconds=MINING_TIME_GAP)
-            return self.time_of_creation - self.previous_block.time_of_creation < time_delta
+            return self.mining_timeout_remainder(self.time_of_creation) < 0
+
+    def mining_timeout_remainder(self, time: datetime):
+        wait_time = datetime.timedelta(seconds=MINING_TIME_GAP)
+        time_remaining = time - self.time_of_creation - wait_time
+        return time_remaining.total_seconds()
 
     def is_valid(self):
         # Check previous hash
@@ -107,9 +119,9 @@ class TxBlock (CBlock):
     def user_balance(self, user: RSAPublicKey):
         user_key = user.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
-        balance = STARTED_BALANCE
+        balance = STARTING_BALANCE
         block = self
-        while block.is_valid() and block.count_valid_flags() >= REQUIRED_VALID_FLAGS:
+        while block.is_valid() and block.count_valid_flags() >= REQUIRED_FLAG_COUNT:
             for tx in block.data:
                 if tx.sender == user_key:
                     balance -= tx.amount

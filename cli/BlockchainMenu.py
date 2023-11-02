@@ -4,11 +4,13 @@ from tabulate import tabulate
 from core.TxType import *
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from InquirerPy import inquirer
+import datetime
 
 
 def mine_block():
     clear_screen()
     print("Mining....")
+    print("Mining timeout:", manager.block.mining_timeout_remainder(datetime.datetime.now()))
     print(manager.mine_block())
     print("")
     inquirer.select("Return to main menu:", choices=["proceed"]).execute()
@@ -50,7 +52,7 @@ def show_blocks():
             block_table.append(("Time of mining", block.time_of_creation))
             block_table.append(("Valid block", block.is_valid()))
             block_table.append((
-                "Validation flags", f"Valid: {block.count_valid_flags()} Invalid: {block.count_valid_flags()}"))
+                "Validation flags", f"Valid: {block.count_valid_flags()} Invalid: {block.count_invalid_flags()}"))
         else:
             block_table.append(("Nonce", block.nonce))
             block_table.append(("Hash", block.block_hash.hex()))
