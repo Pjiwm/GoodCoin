@@ -38,6 +38,10 @@ def show_blocks():
         tx_table = []
         block_table = []
         tx_num = 1
+
+        if transactions == []:
+            tx_table.append(("No transactions in this block", "-----"))
+
         for transaction in transactions:
             tx_table.append((f"TX #{tx_num}", "-----"))
             tx_table.append(("User📦", "Value 💰"))

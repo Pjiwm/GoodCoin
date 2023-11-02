@@ -29,3 +29,6 @@ def unique_message(string: str):
 
 def info_message(string: str):
     return Fore.YELLOW + string + Style.RESET_ALL if string else ""
+
+def cyan_message(string: str):
+    return Fore.CYAN + string + Style.RESET_ALL if string else ""

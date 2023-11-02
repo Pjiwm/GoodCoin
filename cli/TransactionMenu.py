@@ -13,11 +13,11 @@ def address_book():
         clear_screen()
         page = 1
         items_per_page = 10
-        headers = ["Number", "Users 🔑"]
+        headers = [info_message("Number"), info_message("Users 🔑")]
         min = (page - 1) * items_per_page
         max = page * items_per_page
         data = list(manager.address_book.keys())[min:max]
-        numbered_data = [[i + 1, user] for i, user in enumerate(data)]
+        numbered_data = [[i + 1, cyan_message(user)] for i, user in enumerate(data)]
         table = tabulate(numbered_data, headers=headers, tablefmt="fancy_grid")
         print(table)
         table_options = ["Next Page", "Previous Page", "Back"]
@@ -91,19 +91,15 @@ def show_tx_pool():
         transaction = manager.read_transaction(index)
         data = []
         for input in transaction.inputs:
-            record = swapped_dict[input[0]], -input[1]
+            record = cyan_message(str(swapped_dict[input[0]])), error_message(str(-input[1]))
             data.append(record)
         for output in transaction.outputs:
-            record = swapped_dict[output[0]], output[1]
+            record = cyan_message(str(swapped_dict[output[0]])), success_message(str(output[1]))
             data.append(record)
-        data.append(("---", "---"))
-        for reqd in transaction.reqd:
-            record = swapped_dict[reqd], "required signature"
-            data.append(record)
-        data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+        data.append((info_message("TRANSACTION FEE"), info_message(str(transaction.calc_tx_fee()))))
 
         table = tabulate(
-            data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
+            data, headers=[info_message("User📦"), info_message("Value 💰")], tablefmt="fancy_grid")
         print(table)
         if not transaction.is_valid():
             print("Invalid transaction:")
