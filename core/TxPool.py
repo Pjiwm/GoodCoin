@@ -31,6 +31,14 @@ class TxPool:
         else:
             return None
 
+    def take(self, tx: Tx):
+        if tx in self.transactions:
+            self.transactions.remove(tx)
+            self.__write_to_disk()
+            return tx
+        else:
+            return None
+
     def remove_invalid(self, pubk: RSAPublicKey):
         prior_length = len(self.invalid_transactions)
         self.invalid_transactions = [

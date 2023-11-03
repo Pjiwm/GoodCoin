@@ -5,7 +5,7 @@ from core.Transaction import Tx
 from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from typing import Dict
+from typing import Dict, List
 import pickle
 
 
@@ -74,9 +74,6 @@ class BlockchainManager:
         return block
 
     def mine_block_optimal(self):
-        if len(self.tx_pool.transactions) < 5:
-            return "Not enough transactions in transaction pool to mine a new block."
-
         new_block = TxBlock(self.block, self.pub_k)
         while len(new_block.data) < 10:
             tx = self.tx_pool.pop()
@@ -84,6 +81,18 @@ class BlockchainManager:
                 break
             new_block.add_tx(tx)
 
+        nonce = new_block.find_nonce()
+        if new_block.good_nonce():
+            self.block = new_block
+            self.__store_block()
+            return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
+        else:
+            return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
+
+    def mine_block_manual(self, tx_list: List[Tx]):
+        new_block = TxBlock(self.block, self.pub_k)
+        for tx in tx_list:
+            new_block.add_tx(self.tx_pool.take(tx))
         nonce = new_block.find_nonce()
         if new_block.good_nonce():
             self.block = new_block

@@ -84,19 +84,16 @@ class TxBlock (CBlock):
             return self.mining_timeout_remainder(self.time_of_creation) <= 0
 
     def invalid_tx_amount(self):
+        if not self.previous_block:
+            return False
         if len(self.data) > MAX_TX_AMOUNT or len(self.data) < MINIMUM_TX_AMOUNT:
             return True
 
     def invalid_tx_balance(self):
-        inputs = [(pub_key, amount)
-                  for tx in self.data for pub_key, amount in tx.inputs]
-        input_users = set(pub_key for pub_key, _ in inputs)
+        input_users = set([pub_key
+                  for tx in self.data for pub_key, amount in tx.inputs])
         for user in input_users:
-            balance = self.user_balance(user)
-            for input in inputs:
-                if input[0] == user:
-                    balance -= input[1]
-            if balance < 0:
+            if self.user_balance(user) < 0:
                 return True
         return False
 
@@ -119,7 +116,7 @@ class TxBlock (CBlock):
 
         # Check if transactors have enough money
         if self.invalid_tx_balance():
-            self.error = "Transaction balance is invalid."
+            self.error = "Some transactors do not have enough money."
             return False
 
         # Check amount of transactions
@@ -152,7 +149,7 @@ class TxBlock (CBlock):
     def user_balance(self, user: bytes):
         balance = STARTING_BALANCE
         block = self
-        while block.count_valid_flags() >= REQUIRED_FLAG_COUNT:
+        while block:
             for tx in block.data:
                 for addr, amt in tx.inputs:
                     if addr == user:

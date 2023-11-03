@@ -73,7 +73,7 @@ def menu():
         menu_mapping["Transactions"] = transaction_menu
         menu_mapping["Logout"] = logout
         menu_mapping["Explore Blockchain"] = show_blocks
-        menu_mapping["Mine new block"] = mine_block
+        menu_mapping["Mine new block"] = mining_menu
         menu_mapping["Exit"] = exit
         for msg in auto_update():
             print(msg)
