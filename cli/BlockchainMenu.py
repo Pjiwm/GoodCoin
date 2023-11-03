@@ -3,7 +3,7 @@ from cli.Utils import *
 from tabulate import tabulate
 from core.TxType import *
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from core.TxBlock import MINIMUM_TX_AMOUNT
+from core.TxBlock import MAX_TX_AMOUNT
 from InquirerPy import inquirer
 import datetime
 
@@ -24,7 +24,11 @@ def mining_menu():
     if option == options[0]:
         print(optimal_mine())
     elif option == options[1]:
-        print(manual_mine_menu())
+        result = manual_mine_menu()
+        if result:
+            print(result)
+        else:
+            return
     else:
         return
     inquirer.select("Return to main menu:", choices=["proceed"]).execute()
@@ -39,24 +43,13 @@ def manual_mine_menu():
     if not transactions:
         return
     while True:
-        data = []
         clear_screen()
-        print(f"Added transactions {len(tx_to_mine)}/{MINIMUM_TX_AMOUNT}")
+        print(f"Added transactions {len(tx_to_mine)}/{MAX_TX_AMOUNT}")
         tx_fee_sum = sum(tx.calc_tx_fee() for tx in transactions)
         print(f"Total transaction fee: {tx_fee_sum}")
-
         transaction = transactions[index]
-        for input in transaction.inputs:
-            record = swapped_dict[input[0]], -input[1]
-            data.append(record)
-        for output in transaction.outputs:
-            record = swapped_dict[output[0]], output[1]
-            data.append(record)
-        data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+        tx_printer(transaction, swapped_dict)
 
-        table = tabulate(
-            data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
-        print(table)
         if not transaction.is_valid():
             print("Invalid transaction:")
             for error in transaction.invalidations:
@@ -72,8 +65,10 @@ def manual_mine_menu():
             True: "Deselect transaction",
             False: "Select transaction"
         }
+
         table_options = ["Next Transaction", "Previous Transaction",
                          select_deselect[is_selected], "Start mining", "Back"]
+
         option = inquirer.select(
             "Adress book", choices=table_options).execute()
         if option == table_options[0]:

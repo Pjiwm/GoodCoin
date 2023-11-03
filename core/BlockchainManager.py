@@ -102,6 +102,9 @@ class BlockchainManager:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
 
     def calculate_balance(self):
+        last_valid_block = self.block
+        while not last_valid_block.is_valid():
+            last_valid_block = last_valid_block.previous_block
         return self.block.user_balance(self.pub_k.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo))
 

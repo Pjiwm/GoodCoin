@@ -1,6 +1,8 @@
 import os
 from globals import manager
 from colorama import Fore, Style
+from core.Transaction import Tx
+from tabulate import tabulate
 
 
 def clear_screen():
@@ -32,3 +34,19 @@ def info_message(string: str):
 
 def cyan_message(string: str):
     return Fore.CYAN + string + Style.RESET_ALL if string else ""
+
+def tx_printer(transaction: Tx, pubk_username_dict: dict):
+     data = []
+     for input in transaction.inputs:
+         record = cyan_message(
+             str(pubk_username_dict[input[0]])), error_message(str(-input[1]))
+         data.append(record)
+     for output in transaction.outputs:
+         record = cyan_message(
+             str(pubk_username_dict[output[0]])), success_message(str(output[1]))
+         data.append(record)
+     data.append((info_message("TRANSACTION FEE"),
+                 info_message(str(transaction.calc_tx_fee()))))
+     table = tabulate(
+         data, headers=[info_message("User📦"), info_message("Value 💰")], tablefmt="fancy_grid")
+     print(table)

@@ -17,7 +17,8 @@ def address_book():
         min = (page - 1) * items_per_page
         max = page * items_per_page
         data = list(manager.address_book.keys())[min:max]
-        numbered_data = [[i + 1, cyan_message(user)] for i, user in enumerate(data)]
+        numbered_data = [[i + 1, cyan_message(user)]
+                         for i, user in enumerate(data)]
         table = tabulate(numbered_data, headers=headers, tablefmt="fancy_grid")
         print(table)
         table_options = ["Next Page", "Previous Page", "Back"]
@@ -45,25 +46,27 @@ def cancel_transaction():
         clear_screen()
 
         transaction = transactions[index]
-        data = []
-        for input in transaction.inputs:
-            record = swapped_dict[input[0]], -input[1]
-            data.append(record)
-        for output in transaction.outputs:
-            record = swapped_dict[output[0]], output[1]
-            data.append(record)
-        data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+        # data = []
+        # for input in transaction.inputs:
+        #     record = swapped_dict[input[0]], -input[1]
+        #     data.append(record)
+        # for output in transaction.outputs:
+        #     record = swapped_dict[output[0]], output[1]
+        #     data.append(record)
+        # data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
 
-        table = tabulate(
-            data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
-        print(table)
+        # table = tabulate(
+        #     data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
+        # print(table)
+        tx_printer(transaction, swapped_dict)
         if not transaction.is_valid():
             print("Invalid transaction:")
             for error in transaction.invalidations:
                 print(error_message(" -", error))
         print(f"Transaction {index+1}/{len(transactions)}")
 
-        table_options = ["Next Transaction", "Previous Transaction", "Cancel Transaction", "Back"]
+        table_options = ["Next Transaction",
+                         "Previous Transaction", "Cancel Transaction", "Back"]
         option = inquirer.select(
             "Adress book", choices=table_options).execute()
         if option == table_options[0]:
@@ -89,18 +92,22 @@ def show_tx_pool():
         clear_screen()
 
         transaction = manager.read_transaction(index)
-        data = []
-        for input in transaction.inputs:
-            record = cyan_message(str(swapped_dict[input[0]])), error_message(str(-input[1]))
-            data.append(record)
-        for output in transaction.outputs:
-            record = cyan_message(str(swapped_dict[output[0]])), success_message(str(output[1]))
-            data.append(record)
-        data.append((info_message("TRANSACTION FEE"), info_message(str(transaction.calc_tx_fee()))))
+        # data = []
+        # for input in transaction.inputs:
+        #     record = cyan_message(
+        #         str(swapped_dict[input[0]])), error_message(str(-input[1]))
+        #     data.append(record)
+        # for output in transaction.outputs:
+        #     record = cyan_message(
+        #         str(swapped_dict[output[0]])), success_message(str(output[1]))
+        #     data.append(record)
+        # data.append((info_message("TRANSACTION FEE"),
+        #             info_message(str(transaction.calc_tx_fee()))))
 
-        table = tabulate(
-            data, headers=[info_message("User📦"), info_message("Value 💰")], tablefmt="fancy_grid")
-        print(table)
+        # table = tabulate(
+        #     data, headers=[info_message("User📦"), info_message("Value 💰")], tablefmt="fancy_grid")
+        # print(table)
+        tx_printer(transaction, swapped_dict)
         if not transaction.is_valid():
             print("Invalid transaction:")
             for error in transaction.invalidations:
@@ -119,6 +126,7 @@ def show_tx_pool():
 
         if index >= len(manager.tx_pool.transactions) or index < 0:
             index = 0
+
 
 def transact():
     clear_screen()
@@ -170,8 +178,10 @@ def transaction_menu():
    ██    ██   ██ ██   ██ ██   ████ ███████ ██   ██  ██████    ██    ██  ██████  ██   ████ ███████ 
         """
         print(unique_message(title))
-        print(f"Balance: GC {manager.calculate_balance()}")
-        print(msg)
+        print(
+            f"Balance: GC {unique_message(str(manager.calculate_balance()))}")
+        if msg:
+            print(msg)
         menu_mapping = {
             "Address Book": address_book,
             "Make transaction": transact,
