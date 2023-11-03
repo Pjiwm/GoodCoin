@@ -7,6 +7,8 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from typing import Dict
 import pickle
+
+
 class BlockchainManager:
     priv_key: RSAPrivateKey
     pub_k: RSAPublicKey
@@ -91,7 +93,8 @@ class BlockchainManager:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
 
     def calculate_balance(self):
-        return self.block.user_balance(self.pub_k)
+        return self.block.user_balance(self.pub_k.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo))
 
     def add_flag_to_block(self):
         if self.block.previous_block is None:
@@ -103,13 +106,14 @@ class BlockchainManager:
             return
 
         result = None
-        check_flag = lambda x: any(my_pubk_bytes == pubk for pubk, _, _ in x)
-        already_flagged = check_flag(self.block.invalid_flags) or check_flag(self.block.valid_flags)
+        def check_flag(x): return any(
+            my_pubk_bytes == pubk for pubk, _, _ in x)
+        already_flagged = check_flag(
+            self.block.invalid_flags) or check_flag(self.block.valid_flags)
 
-        if len(self.block.valid_flags) < REQUIRED_FLAG_COUNT and not already_flagged:
+        if not already_flagged:
             result = self.block.add_flag(self.priv_key, self.pub_k)
             self.__store_block()
-
 
         if len(self.block.invalid_flags) == REQUIRED_FLAG_COUNT:
             self.remove_last_block()

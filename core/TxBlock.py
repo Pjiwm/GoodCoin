@@ -15,10 +15,13 @@ NEXT_CHAR_LIMIT = 20
 STARTING_BALANCE = 50
 REQUIRED_FLAG_COUNT = 3
 MINING_TIME_GAP = 180
+MINIMUM_TX_AMOUNT = 5
+MAX_TX_AMOUNT = 10
 
 
 class TxBlock (CBlock):
     error = ""
+
     def __init__(self, previousBlock: CBlockSelf, miner: RSAPublicKey):
         self.time_of_creation: datetime = datetime.datetime.now()
         self.nonce = "A random nonce"
@@ -54,7 +57,6 @@ class TxBlock (CBlock):
         return len([v for pubk, sig, v in unique_invalid_flags if
                     verify((self.block_hash, False), sig, pubk_from_bytes(pubk)) and self.miner != pubk and not v])
 
-
     def add_tx(self, Tx_in: Tx):
         self.data.append(Tx_in)
 
@@ -81,6 +83,23 @@ class TxBlock (CBlock):
         if self.previous_block:
             return self.mining_timeout_remainder(self.time_of_creation) <= 0
 
+    def invalid_tx_amount(self):
+        if len(self.data) > MAX_TX_AMOUNT or len(self.data) < MINIMUM_TX_AMOUNT:
+            return True
+
+    def invalid_tx_balance(self):
+        inputs = [(pub_key, amount)
+                  for tx in self.data for pub_key, amount in tx.inputs]
+        input_users = set(pub_key for pub_key, _ in inputs)
+        for user in input_users:
+            balance = self.user_balance(user)
+            for input in inputs:
+                if input[0] == user:
+                    balance -= input[1]
+            if balance < 0:
+                return True
+        return False
+
     def mining_timeout_remainder(self, time: datetime):
         wait_time = datetime.timedelta(seconds=MINING_TIME_GAP)
         time_remaining = self.time_of_creation + wait_time - time
@@ -91,15 +110,28 @@ class TxBlock (CBlock):
         if not super(TxBlock, self).is_valid():
             self.error = "Previous hash is invalid."
             return False
+
         # Check Transactions
         for tx in self.data:
             if not tx.is_valid():
                 self.error = "Transaction is invalid."
                 return False
+
+        # Check if transactors have enough money
+        if self.invalid_tx_balance():
+            self.error = "Transaction balance is invalid."
+            return False
+
+        # Check amount of transactions
+        if self.invalid_tx_amount():
+            self.error = "Amount of transactions is invalid. Must be between 5 and 10."
+            return False
+
         # Check reward
         if self.invalid_reward():
             self.error = "Reward is invalid."
             return False
+
         # Check if id is correct
         if self.invalid_id():
             self.error = "Block id is invalid."
@@ -117,18 +149,16 @@ class TxBlock (CBlock):
                 return False
         return True
 
-    def user_balance(self, user: RSAPublicKey):
-        user_key = user.public_bytes(
-            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+    def user_balance(self, user: bytes):
         balance = STARTING_BALANCE
         block = self
-        while block.is_valid() and block.count_valid_flags() >= REQUIRED_FLAG_COUNT:
+        while block.count_valid_flags() >= REQUIRED_FLAG_COUNT:
             for tx in block.data:
                 for addr, amt in tx.inputs:
-                    if addr == user_key:
+                    if addr == user:
                         balance -= amt
                 for addr, amt in tx.outputs:
-                    if addr == user_key:
+                    if addr == user:
                         balance += amt
             block = block.previous_block
         return balance
