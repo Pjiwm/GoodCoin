@@ -92,21 +92,6 @@ def show_tx_pool():
         clear_screen()
 
         transaction = manager.read_transaction(index)
-        # data = []
-        # for input in transaction.inputs:
-        #     record = cyan_message(
-        #         str(swapped_dict[input[0]])), error_message(str(-input[1]))
-        #     data.append(record)
-        # for output in transaction.outputs:
-        #     record = cyan_message(
-        #         str(swapped_dict[output[0]])), success_message(str(output[1]))
-        #     data.append(record)
-        # data.append((info_message("TRANSACTION FEE"),
-        #             info_message(str(transaction.calc_tx_fee()))))
-
-        # table = tabulate(
-        #     data, headers=[info_message("User📦"), info_message("Value 💰")], tablefmt="fancy_grid")
-        # print(table)
         tx_printer(transaction, swapped_dict)
         if not transaction.is_valid():
             print("Invalid transaction:")

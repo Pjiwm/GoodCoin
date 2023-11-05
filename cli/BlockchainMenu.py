@@ -14,7 +14,7 @@ def mining_menu():
     if len(manager.tx_pool.transactions) < 5:
         print(error_message(
             "Pool does currently not have enough transactions to mine a block."))
-    wait_time = manager.block.mining_timeout_remainder(datetime.datetime.now())
+    wait_time = manager.block.timer_for_next_block(datetime.datetime.now())
     if wait_time > 0:
         print(error_message(
             f"Wait {wait_time} seconds before mining a block."))
@@ -33,13 +33,16 @@ def mining_menu():
         return
     inquirer.select("Return to main menu:", choices=["proceed"]).execute()
 
-
 def manual_mine_menu():
     swapped_dict = {v.public_bytes(
         Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
     index = 0
     transactions = manager.tx_pool.transactions
     tx_to_mine = []
+    # Add reward tx to mine by default
+    reward_tx = manager.tx_pool.get_reward_tx()
+    if reward_tx:
+        tx_to_mine.append(reward_tx)
     if not transactions:
         return
     while True:
@@ -129,7 +132,7 @@ def show_blocks():
             tx_table.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
             tx_table.append(("Validate transaction", transaction.is_valid()))
         if block.previous_block:
-            tx_table.append(("Mining Reward ⛏️", TxType.RewardValue.value))
+            tx_table.append(("Mining Reward ⛏️", TxType.Reward.value))
             miner_name = swapped_dict[block.miner]
             tx_table.append((miner_name, block.get_mining_reward()))
             block_table.append(("Nonce", block.nonce))

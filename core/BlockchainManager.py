@@ -2,6 +2,7 @@ import re
 from core import Signature
 from core.TxPool import TxPool
 from core.Transaction import Tx
+from core.TxType import TxType
 from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -105,6 +106,8 @@ class BlockchainManager:
         last_valid_block = self.block
         while not last_valid_block.is_valid():
             last_valid_block = last_valid_block.previous_block
+            if last_valid_block is None:
+                break
         return self.block.user_balance(self.pub_k.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo))
 
@@ -126,6 +129,8 @@ class BlockchainManager:
         if not already_flagged:
             result = self.block.add_flag(self.priv_key, self.pub_k)
             self.__store_block()
+            if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
+                self.__create_reward_tx()
 
         if len(self.block.invalid_flags) == REQUIRED_FLAG_COUNT:
             self.remove_last_block()
@@ -136,6 +141,11 @@ class BlockchainManager:
             self.tx_pool.push(tx)
         self.block = self.block.previous_block
         self.__store_block()
+
+    def __create_reward_tx(self):
+        reward_tx = Tx(type=TxType.Reward)
+        reward_tx.add_output(self.block.miner, TxType.Reward.value + self.block.total_tx_fee())
+        self.tx_pool.push(reward_tx)
 
     def __load_block(self):
         try:

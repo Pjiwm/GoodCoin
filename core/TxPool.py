@@ -3,6 +3,7 @@ import pickle
 from typing import List
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from core.Transaction import Tx
+from core.TxType import TxType
 POOL_STORE_PATH = "data/txpool.dat"
 TRASH_STORE_PATH = "data/txtrashpool.dat"
 
@@ -58,6 +59,12 @@ class TxPool:
 
     def get_users_txs(self, pubk: RSAPublicKey):
         return [tx for tx in self.transactions if tx.is_tx_author(pubk)]
+
+    def get_reward_tx(self):
+        for tx in self.transactions:
+            if tx.type == TxType.Reward:
+                return tx
+        return None
 
     def __write_to_disk(self, path=POOL_STORE_PATH):
         file = open(path, 'wb')

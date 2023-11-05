@@ -76,12 +76,34 @@ class TxBlock (CBlock):
         total_in, total_out = self.__count_totals()
 
         tx_balance = round(total_out - total_in, 10)
-        if tx_balance > TxType.RewardValue.value:
+        if tx_balance > TxType.Reward.value:
             return True
 
+    def invalid_mining_tx(self):
+        if not self.previous_block:
+            return False
+        else:
+            # Miner TX only exist after the first mined block
+            if not self.previous_block.previous_block:
+                return False
+        if sum(1 for tx in self.data if tx.type == TxType.Reward) != 1:
+            return True
+
+        reward_transaction = next(
+            (tx for tx in self.data if tx.type == TxType.Reward), None)
+        rewarded_user = reward_transaction.outputs[0][0]
+        reward_amount = reward_transaction.outputs[0][1]
+
+        if rewarded_user != self.previous_block.miner:
+            return True
+
+        if reward_amount != self.previous_block.get_mining_reward():
+            return True
+
+        return False
+
     def invalid_mine_period(self):
-        if self.previous_block:
-            return self.mining_timeout_remainder(self.time_of_creation) <= 0
+        return self.mining_timeout_remainder(self.time_of_creation) > 0
 
     def invalid_tx_amount(self):
         if not self.previous_block:
@@ -91,16 +113,34 @@ class TxBlock (CBlock):
 
     def invalid_tx_balance(self):
         input_users = set([pub_key
-                  for tx in self.data for pub_key, amount in tx.inputs])
+                           for tx in self.data for pub_key, amount in tx.inputs])
         for user in input_users:
             if self.user_balance(user) < 0:
                 return True
         return False
 
     def mining_timeout_remainder(self, time: datetime):
+        if self.previous_block:
+            # If it's the block after genesis block we allow them
+            # to mine immediately.
+            if not self.previous_block.previous_block:
+                return 0
+
+            wait_time = datetime.timedelta(seconds=MINING_TIME_GAP)
+            time_remaining = self.previous_block.time_of_creation + wait_time - time
+            if time_remaining.total_seconds() >= 0:
+                return time_remaining.total_seconds()
+        return 0
+
+    def timer_for_next_block(self, time: datetime):
+        if not self.previous_block:
+            # If it's the block after genesis block we allow them
+            # to mine immediately.
+            return -1
+
         wait_time = datetime.timedelta(seconds=MINING_TIME_GAP)
         time_remaining = self.time_of_creation + wait_time - time
-        return max(time_remaining.total_seconds(), 0)
+        return time_remaining.total_seconds()
 
     def is_valid(self):
         # Check previous hash
@@ -139,6 +179,11 @@ class TxBlock (CBlock):
             self.error = "Block was mined too fast."
             return False
 
+        # Check if the miner of previous block got a valid reward
+        if self.invalid_mining_tx():
+            self.error = "Miner of previous block did not get a valid reward."
+            return False
+
         # Check if tampered
         if self.block_hash:
             if not self.__hash_nonce().hex() == self.block_hash.hex():
@@ -160,6 +205,9 @@ class TxBlock (CBlock):
             block = block.previous_block
         return balance
 
+    def total_tx_fee(self):
+        return sum(tx.calc_tx_fee() for tx in self.data)
+
     def good_nonce(self):
         hash = self.__hash_nonce().hex()
         return hash[:LEADING_ZEROS] == '0' * LEADING_ZEROS
@@ -172,7 +220,7 @@ class TxBlock (CBlock):
         return self.nonce
 
     def get_mining_reward(self):
-        return sum(tx.calc_tx_fee() for tx in self.data) + TxType.RewardValue.value
+        return sum(tx.calc_tx_fee() for tx in self.data) + TxType.Reward.value
 
     def __hash_nonce(self):
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())

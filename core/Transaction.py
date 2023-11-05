@@ -20,13 +20,22 @@ class Tx:
         self.invalidations = []
 
     def __lt__(self, other):
+        # Always puts reward tx first
+        if self.type == TxType.Reward:
+            return True
+        if other.type == TxType.Reward:
+            return False
+
         return -self.calc_tx_fee() < -other.calc_tx_fee()
 
     def add_input(self, from_addr: RSAPublicKey, amount: int):
         self.inputs.append((from_addr.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
 
-    def add_output(self, to_addr: RSAPublicKey, amount):
+    def add_output(self, to_addr: RSAPublicKey | bytes, amount):
+        if isinstance(to_addr, bytes):
+            self.outputs.append((to_addr, amount))
+            return
         try:
             self.outputs.append((to_addr.public_bytes(
                 Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
