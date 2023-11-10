@@ -10,9 +10,9 @@ TRASH_STORE_PATH = "data/txtrashpool.dat"
 
 class TxPool:
     def __init__(self):
-        self.transactions: List[Tx] = self.__load_from_disk()
-        self.invalid_transactions: List[Tx] = self.__load_from_disk(
-            TRASH_STORE_PATH)
+        valid, invalid = self.__load_from_disk()
+        self.transactions: List[Tx] = valid
+        self.invalid_transactions: List[Tx] = invalid
 
     def push(self, tx: Tx):
         if tx.is_valid():
@@ -21,7 +21,7 @@ class TxPool:
             return "Successfully added transaction to pool."
         else:
             self.invalid_transactions.append(tx)
-            self.__write_to_disk(TRASH_STORE_PATH)
+            self.__write_to_disk()
             return "Transaction is invalid."
 
     def pop(self):
@@ -45,7 +45,7 @@ class TxPool:
         self.invalid_transactions = [
             tx for tx in self.invalid_transactions if not tx.is_tx_author(pubk)]
         if prior_length != len(self.invalid_transactions):
-            self.__write_to_disk(TRASH_STORE_PATH)
+            self.__write_to_disk()
             return "You've made some invalid transactions. They have been removed from the pool."
         return ""
 
@@ -66,16 +66,16 @@ class TxPool:
                 return tx
         return None
 
-    def __write_to_disk(self, path=POOL_STORE_PATH):
-        file = open(path, 'wb')
-        pickle.dump(self.transactions, file, -1)
+    def __write_to_disk(self):
+        file = open(POOL_STORE_PATH, 'wb')
+        pickle.dump((self.transactions, self.invalid_transactions), file, -1)
         file.close()
 
-    def __load_from_disk(self, path=POOL_STORE_PATH):
+    def __load_from_disk(self):
         try:
-            file = open(path, 'rb')
-            transactions = pickle.load(file)
+            file = open(POOL_STORE_PATH, 'rb')
+            pool_data = pickle.load(file)
             file.close()
-            return transactions
+            return pool_data
         except:
-            return []
+            return ([],[])

@@ -60,23 +60,11 @@ class TxBlock (CBlock):
     def add_tx(self, Tx_in: Tx):
         self.data.append(Tx_in)
 
-    def __count_totals(self):
-        total_in = sum(amt for tx in self.data for _, amt in tx.inputs)
-        total_out = sum(amt for tx in self.data for _, amt in tx.outputs)
-        return total_in, total_out
-
     def invalid_id(self):
         if not self.previous_block:
             return False
 
         if self.id != self.previous_block.id + 1:
-            return True
-
-    def invalid_reward(self):
-        total_in, total_out = self.__count_totals()
-
-        tx_balance = round(total_out - total_in, 10)
-        if tx_balance > TxType.Reward.value:
             return True
 
     def invalid_mining_tx(self):
@@ -162,11 +150,6 @@ class TxBlock (CBlock):
         # Check amount of transactions
         if self.invalid_tx_amount():
             self.error = "Amount of transactions is invalid. Must be between 5 and 10."
-            return False
-
-        # Check reward
-        if self.invalid_reward():
-            self.error = "Reward is invalid."
             return False
 
         # Check if id is correct
