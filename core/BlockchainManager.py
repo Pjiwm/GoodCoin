@@ -19,6 +19,7 @@ class BlockchainManager:
     block: TxBlock
 
     def __init__(self):
+        Signature.create_data_folder_and_file()
         self.priv_key = None
         self.pub_k = None
         self.username = None
@@ -35,19 +36,17 @@ class BlockchainManager:
 
         key_set = Signature.generate_keys()
         pass_hash = Signature.string_hash(pw)
-        Signature.save_user_keys(username + ".pem", key_set, pass_hash)
+        Signature.save_user_keys(username, key_set, pass_hash)
         self.priv_key, self.pub_k = key_set
         self.username = username
-        Signature.store_in_address_book(username, self.pub_k)
         self.address_book = Signature.load_address_book()
         return
 
     def login_user(self, username: str, pw: str):
-        file_name = username + ".pem"
         try:
             pass_hash = Signature.string_hash(pw)
             self.priv_key, self.pub_k = Signature.load_user_keys(
-                file_name, pass_hash)
+                username, pass_hash)
             self.username = username
             return None
         except:

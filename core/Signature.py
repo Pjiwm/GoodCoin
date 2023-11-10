@@ -33,8 +33,14 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from typing import Tuple, Dict
 
 USER_PATH = "data/users/"
-ADDRES_BOOK_PATH = "data/address_book/users.keys"
+USER_DB = "data/users.dat"
+def create_data_folder_and_file():
+    if not os.path.exists("data"):
+        os.makedirs("data")
 
+    if not os.path.exists(USER_DB):
+        with open(USER_DB, 'xb'):
+            pass
 
 def generate_keys() -> Tuple[RSAPrivateKey, RSAPublicKey]:
     private_key = generate_private_key(
@@ -75,25 +81,34 @@ def verify(message, signature: bytes, public_key: RSAPublicKey) -> bool:
         return False
 
 
-def save_user_keys(keys_file_name: str, keys: Tuple[RSAPrivateKey, RSAPublicKey], pw: str):
-    file = open(USER_PATH + keys_file_name, 'wb')
+def save_user_keys(user_name: str, keys: Tuple[RSAPrivateKey, RSAPublicKey], pw: str):
+    file = open(USER_DB, 'rb+')
+    try:
+        db = pickle.load(file)
+    except:
+        db = {}
+    file.close()
     priv = keys[0].private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.BestAvailableEncryption(
             str.encode(pw))
     )
-
+    file = open(USER_DB, 'wb')
     pub = keys[1].public_bytes(encoding=serialization.Encoding.PEM,
                                format=serialization.PublicFormat.SubjectPublicKeyInfo
                                )
-    pickle.dump((priv, pub), file, -1)
+    db[user_name] = (priv, pub)
+    pickle.dump(db, file, -1)
     file.close()
 
 
-def load_user_keys(keys_file_name: str, pw: str) -> Tuple[RSAPrivateKey, RSAPublicKey]:
-    file = open(USER_PATH + keys_file_name, 'rb')
-    key_set = pickle.load(file)
+def load_user_keys(username: str, pw: str) -> Tuple[RSAPrivateKey, RSAPublicKey]:
+    file = open(USER_DB, 'rb')
+    db = pickle.load(file)
+    if not db[username]:
+        raise ValueError("User not found.")
+    key_set = db[username]
     file.close()
     return (serialization.load_pem_private_key(
         key_set[0], str.encode(pw), default_backend()),
@@ -107,7 +122,7 @@ def store_in_address_book(username: str, public_key: RSAPublicKey):
                                         format=serialization.PublicFormat.SubjectPublicKeyInfo
                                         )
     loaded_address_book[username] = pub_bytes
-    file = open(ADDRES_BOOK_PATH, 'wb')
+    file = open(USER_DB, 'wb')
     pickle.dump(loaded_address_book, file, -1)
     file.close()
 
@@ -117,15 +132,12 @@ def pubk_from_bytes(addr: bytes):
 
 def load_address_book() -> Dict[str, RSAPublicKey]:
     try:
-        file = open(ADDRES_BOOK_PATH, 'rb')
-        file_load = pickle.load(file)
+        file = open(USER_DB, 'rb')
+        db = pickle.load(file)
         file.close()
-        address_book = {
-            name: serialization.load_pem_public_key(
-                key, default_backend())
-            for (name, key) in file_load.items()
-        }
-        return address_book
+        public_key_dict = {key: serialization.load_pem_public_key(
+                public_key, default_backend()) for key, (_, public_key) in db.items()}
+        return public_key_dict
     except:
         return {}
 
@@ -145,5 +157,11 @@ def string_hash(message: str) -> str:
 
 
 def username_available(name: str) -> bool:
-    file_path = os.path.join(USER_PATH, name + ".pem")
-    return not os.path.isfile(file_path)
+    file = open(USER_DB, 'rb+')
+    try:
+        db = pickle.load(file)
+    except:
+        file.close()
+        return True
+    file.close()
+    return not db.get(name)

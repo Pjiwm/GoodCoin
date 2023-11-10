@@ -21,7 +21,11 @@ def register():
         if not confirm:
             break
         if pw != pw_confirm:
-            print("Passwords do not match")
+            print(error_message("Passwords do not match"))
+            option = inquirer.select(
+                    "Want to try again?", choices=["Yes", "No"])
+            if option == "No":
+                break
             continue
         if pw == pw_confirm:
             result = manager.register_user(
@@ -29,12 +33,12 @@ def register():
             if not result:
                 print("Successfully registered!")
                 break
-        else:
-            print(result)
-            option = inquirer.select(
-                "Want to try again?", choices=["Yes", "No"])
-            if option == "No":
-                break
+            else:
+                print(error_message(result))
+                option = inquirer.select(
+                    "Want to try again?", choices=["Yes", "No"])
+                if option == "No":
+                    break
 
 
 def login():
