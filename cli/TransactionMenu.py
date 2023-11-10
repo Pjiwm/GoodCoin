@@ -6,7 +6,7 @@ from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.backends import default_backend
-
+from inquirer.errors import ValidationError
 
 def address_book():
     while True:
@@ -46,18 +46,6 @@ def cancel_transaction():
         clear_screen()
 
         transaction = transactions[index]
-        # data = []
-        # for input in transaction.inputs:
-        #     record = swapped_dict[input[0]], -input[1]
-        #     data.append(record)
-        # for output in transaction.outputs:
-        #     record = swapped_dict[output[0]], output[1]
-        #     data.append(record)
-        # data.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
-
-        # table = tabulate(
-        #     data, headers=["User📦", "Value 💰"], tablefmt="fancy_grid")
-        # print(table)
         tx_printer(transaction, swapped_dict)
         if not transaction.is_valid():
             print("Invalid transaction:")
@@ -113,6 +101,16 @@ def show_tx_pool():
             index = 0
 
 
+
+def __transaction_value_validator(value):
+    try:
+        num = float(value)
+        if int(num * 10) != num * 10:
+            return False
+    except:
+        return False
+    return True
+
 def transact():
     clear_screen()
     tx = Tx()
@@ -127,13 +125,17 @@ def transact():
 
         coin_input = inquirer.text(
             message="How many coins do you want to send?",
-            validate=NumberValidator()).execute()
-        coins = round(float(coin_input), 1)
+            invalid_message="Please enter a valid number with up to one decimal place (seperated by '.').",
+            validate=__transaction_value_validator).execute(),
+        coins = round(float(coin_input[0]), 1)
 
         transaction_fee_input = inquirer.text(
             message="What is the transaction fee you want to pay?",
-            validate=NumberValidator()).execute()
+            invalid_message="Please enter a valid number with up to one decimal place (seperated by '.').",
+            validate=__transaction_value_validator).execute()
+        print(transaction_fee_input)
         transaction_fee = round(float(transaction_fee_input), 1)
+
         tx.add_input(manager.pub_k, coins + transaction_fee)
         try:
             tx.add_output(manager.address_book[recipient], coins)
