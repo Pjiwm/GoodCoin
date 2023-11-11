@@ -41,7 +41,7 @@ def cyan_message(string: str):
     return Fore.CYAN + string + Style.RESET_ALL if string else ""
 
 
-def tx_printer(transaction: Tx, pubk_username_dict: dict):
+def tx_printer(transaction: Tx, pubk_username_dict: dict, show_balance=False):
     data = []
     for input in transaction.inputs:
         record = cyan_message(

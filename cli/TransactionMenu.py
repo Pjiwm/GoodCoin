@@ -29,7 +29,7 @@ def address_book():
         elif option == "Previous Page":
             page -= 1
         else:
-            return ""
+            return
 
         if max > len(manager.address_book.keys()) or page < 1:
             page = 1
@@ -64,7 +64,7 @@ def cancel_transaction():
         elif option == table_options[2]:
             return manager.tx_pool.cancel_transaction(manager.pub_k, transaction)
         else:
-            return ""
+            return
 
         if index >= len(transactions) or index < 0:
             index = 0
@@ -80,7 +80,7 @@ def show_tx_pool():
         clear_screen()
 
         transaction = manager.read_transaction(index)
-        tx_printer(transaction, swapped_dict)
+        tx_printer(transaction, swapped_dict, show_balance=True)
         if not transaction.is_valid():
             print("Invalid transaction:")
             for error in transaction.invalidations:
@@ -95,12 +95,10 @@ def show_tx_pool():
         elif option == table_options[1]:
             index -= 1
         else:
-            return ""
+            return
 
         if index >= len(manager.tx_pool.transactions) or index < 0:
             index = 0
-
-
 
 def __transaction_value_validator(value):
     try:
@@ -113,8 +111,8 @@ def __transaction_value_validator(value):
 
 def transact():
     clear_screen()
-    tx = Tx()
     while True:
+        tx = Tx()
         completer = {k: None for k, _ in manager.address_book.items()}
         recipient = inquirer.text(
             message="To who do you want to transfer coins",
@@ -134,6 +132,16 @@ def transact():
             invalid_message="Please enter a valid number with up to one decimal place (seperated by '.').",
             validate=__transaction_value_validator).execute()
         transaction_fee = round(float(transaction_fee_input), 1)
+
+
+        if manager.calculate_balance() - coins - transaction_fee < 0:
+            choices = ["Try again", "Go back"]
+            next_step = inquirer.select(
+                "Insufficient balance", choices=choices).execute()
+            if next_step == choices[0]:
+                continue
+            elif next_step == choices[1]:
+                return
 
         tx.add_input(manager.pub_k, coins + transaction_fee)
         try:
@@ -165,9 +173,11 @@ def transaction_menu():
         """
         print(unique_message(title))
         print(
-            f"Balance: GC {unique_message(str(manager.calculate_balance()))}")
+            f"Balance: GC {unique_message(str(round(manager.calculate_balance(), 1)))}")
         if msg:
             print(msg)
+        for txt in auto_update():
+            print(txt)
         menu_mapping = {
             "Address Book": address_book,
             "Make transaction": transact,

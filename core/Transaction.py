@@ -105,9 +105,9 @@ class Tx:
         return False
 
     def has_negative_amount(self):
-        if any(amount <= 0 for _, amount in self.inputs):
+        if any(amount < 0 for _, amount in self.inputs):
             return True
-        if any(amount <= 0 for _, amount in self.outputs):
+        if any(amount < 0 for _, amount in self.outputs):
             return True
         return False
 

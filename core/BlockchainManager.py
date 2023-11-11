@@ -6,7 +6,7 @@ from core.TxType import TxType
 from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from typing import Dict, List
+from typing import Dict, List, Union
 import pickle
 
 
@@ -102,13 +102,18 @@ class BlockchainManager:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
 
     def calculate_balance(self):
+        return self.calculate_user_balance(self.pub_k)
+
+    def calculate_user_balance(self, user: Union[bytes, RSAPublicKey]):
+        if isinstance(user, RSAPublicKey):
+            user = user.public_bytes(
+                Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
         last_valid_block = self.block
         while not last_valid_block.is_valid():
             last_valid_block = last_valid_block.previous_block
             if last_valid_block is None:
                 break
-        return self.block.user_balance(self.pub_k.public_bytes(
-            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo))
+        return self.block.user_balance(user)
 
     def add_flag_to_block(self):
         if self.block.previous_block is None:

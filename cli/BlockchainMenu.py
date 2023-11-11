@@ -14,10 +14,16 @@ def mining_menu():
     if len(manager.tx_pool.transactions) < 5:
         print(error_message(
             "Pool does currently not have enough transactions to mine a block."))
+        inquirer.select("Return to main menu:", choices=["Go back"]).execute()
+        return
+
     wait_time = manager.block.timer_for_next_block(datetime.datetime.now())
     if wait_time > 0:
         print(error_message(
             f"Wait {wait_time} seconds before mining a block."))
+        inquirer.select("Return to main menu:", choices=["Go back"]).execute()
+        return
+
     options = ["Optimal mine strategy", "Manual strategy", "Back"]
     option = inquirer.select(
         "Mining options", choices=options).execute()
