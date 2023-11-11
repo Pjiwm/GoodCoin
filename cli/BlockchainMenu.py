@@ -126,19 +126,19 @@ def show_blocks():
             tx_table.append(("No transactions in this block", "-----"))
 
         for transaction in transactions:
-            tx_table.append((f"TX #{tx_num}", "-----"))
+            tx_table.append((info_message(f"TX #{tx_num}"), "-----"))
             tx_table.append(("User📦", "Value 💰"))
             tx_num += 1
             for input in transaction.inputs:
-                record = swapped_dict[input[0]], -input[1]
+                record = swapped_dict[input[0]], round(-input[1], 1)
                 tx_table.append(record)
             for output in transaction.outputs:
                 record = swapped_dict[output[0]], output[1]
                 tx_table.append(record)
-            tx_table.append(("TRANSACTION FEE", transaction.calc_tx_fee()))
+            tx_table.append(("TRANSACTION FEE", round(transaction.calc_tx_fee(), 1)))
             tx_table.append(("Validate transaction", transaction.is_valid()))
         if block.previous_block:
-            tx_table.append(("Mining Reward ⛏️", TxType.Reward.value))
+            tx_table.append((info_message("Mining Reward ⛏️"), TxType.Reward.value))
             miner_name = swapped_dict[block.miner]
             tx_table.append((miner_name, block.get_mining_reward()))
             block_table.append(("Nonce", block.nonce))

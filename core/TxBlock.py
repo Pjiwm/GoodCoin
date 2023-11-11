@@ -10,7 +10,7 @@ import random
 import datetime
 from typing import List, Tuple
 
-LEADING_ZEROS = 2
+LEADING_ZEROS = 4
 NEXT_CHAR_LIMIT = 20
 STARTING_BALANCE = 50
 REQUIRED_FLAG_COUNT = 3
