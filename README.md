@@ -9,6 +9,8 @@ On windows:
 
 On Linux/Mac:
 
+`bash setup.bash`
+
 `source .venv/bin/activate`
 
 ## Manually
