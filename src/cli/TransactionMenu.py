@@ -6,7 +6,6 @@ from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.backends import default_backend
-from inquirer.errors import ValidationError
 
 def address_book():
     while True:

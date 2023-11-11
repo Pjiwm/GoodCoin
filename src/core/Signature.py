@@ -32,7 +32,6 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from typing import Tuple, Dict
 
-USER_PATH = "data/users/"
 USER_DB = "data/users.dat"
 def create_data_folder_and_file():
     if not os.path.exists("data"):
