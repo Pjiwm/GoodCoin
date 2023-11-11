@@ -133,7 +133,6 @@ def transact():
             message="What is the transaction fee you want to pay?",
             invalid_message="Please enter a valid number with up to one decimal place (seperated by '.').",
             validate=__transaction_value_validator).execute()
-        print(transaction_fee_input)
         transaction_fee = round(float(transaction_fee_input), 1)
 
         tx.add_input(manager.pub_k, coins + transaction_fee)

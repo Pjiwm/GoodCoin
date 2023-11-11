@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPriva
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.backends import default_backend
-from typing import List
+from typing import List, Union
 
 
 class Tx:
@@ -32,7 +32,7 @@ class Tx:
         self.inputs.append((from_addr.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo), amount))
 
-    def add_output(self, to_addr: RSAPublicKey | bytes, amount):
+    def add_output(self, to_addr: Union[RSAPublicKey, bytes], amount):
         if isinstance(to_addr, bytes):
             self.outputs.append((to_addr, amount))
             return
@@ -105,9 +105,9 @@ class Tx:
         return False
 
     def has_negative_amount(self):
-        if any(amount < 0 for _, amount in self.inputs):
+        if any(amount <= 0 for _, amount in self.inputs):
             return True
-        if any(amount < 0 for _, amount in self.outputs):
+        if any(amount <= 0 for _, amount in self.outputs):
             return True
         return False
 
