@@ -137,10 +137,12 @@ class BlockchainManager:
             result = block.add_flag(self.priv_key, self.pub_k)
             self.__store_block()
             if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
+                result = "Created reward transaction for minder as block has been flagged enough times by users."
                 self.__create_reward_tx()
 
         if len(block.invalid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
             self.remove_last_block()
+            result = "Removed last block as it has been flagged as invalid by enough users."
         return result
 
     def remove_last_block(self):

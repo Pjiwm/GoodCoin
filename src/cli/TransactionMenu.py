@@ -25,6 +25,10 @@ def show_txs_from_ledger():
             if found_user:
                 list_of_txs.append((last_block.id, last_block.block_hash.hex(), tx, last_block.time_of_creation))
         last_block = last_block.previous_block
+
+    if len(list_of_txs) == 0:
+        return error_message("No transactions found on the ledger from you.")
+
     index = len(list_of_txs) - 1
 
     while True:
@@ -32,7 +36,7 @@ def show_txs_from_ledger():
         tx_printer(list_of_txs[index][2], swapped_dict)
         print(f"Block: #{list_of_txs[index][0]}")
         print(f"Block hash: {info_message(list_of_txs[index][1])}")
-        print(f"Block time of creation: {cyan_message(list_of_txs[index][3])}")
+        print(f"Block time of creation: {list_of_txs[index][3]}")
         print(f"Transaction {index+1}/{len(list_of_txs)}")
         options = ["Next Transaction", "Previous Transaction", "Back"]
         option = inquirer.select("Transaction", choices=options).execute()
@@ -151,13 +155,16 @@ def transact():
     while True:
         tx = Tx()
         completer = {k: None for k, _ in manager.address_book.items()}
+        completer["EXIT"] = None
         recipient = inquirer.text(
-            message="To who do you want to transfer coins",
+            message="To who do you want to transfer coins, type EXIT to exit.",
             completer=completer,
             invalid_message="Invalid recipient. Please select an existing user.",
             multicolumn_complete=True,
             validate=lambda x: x in completer.keys()
         ).execute()
+        if recipient == "EXIT":
+            return
 
         coin_input = inquirer.text(
             message="How many coins do you want to send?",

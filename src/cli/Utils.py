@@ -15,18 +15,12 @@ def auto_update():
     removed_invalid = error_message(manager.tx_pool.remove_invalid(manager.pub_k))
     flagged_invalid = error_message(manager.tx_pool.move_invalid())
     flag_msg = manager.add_flag_to_block()
-    removed_invalid_block = len(manager.block.invalid_flags) == REQUIRED_FLAG_COUNT
-    approved_valid_block = len(manager.block.valid_flags) == REQUIRED_FLAG_COUNT
     if removed_invalid:
         messages.append(error_message(removed_invalid))
     if flag_msg:
         messages.append(info_message(flag_msg))
     if flagged_invalid:
         messages.append(error_message(flagged_invalid))
-    if removed_invalid_block:
-        messages.append(error_message(f"Removed last block because {REQUIRED_FLAG_COUNT} flagged it as invalid."))
-    elif approved_valid_block:
-        messages.append(success_message(f"Approved of last block because {REQUIRED_FLAG_COUNT} flagged it as valid."))
     return messages
 
 
