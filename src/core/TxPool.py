@@ -49,6 +49,17 @@ class TxPool:
             return "You've made some invalid transactions. They have been removed from the pool."
         return ""
 
+    def move_invalid(self):
+        has_moved = False
+        for tx in self.transactions:
+            if not tx.is_valid():
+                has_moved = True
+                self.invalid_transactions.append(tx)
+                self.transactions.remove(tx)
+        if has_moved:
+            return "Flagged transaction(s) as invalid."
+        return ""
+
     def cancel_transaction(self, pubk: RSAPublicKey, tx_to_cancel: Tx):
         for tx in self.transactions:
             if tx.is_tx_author(pubk) and tx_to_cancel == tx :

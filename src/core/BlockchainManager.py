@@ -116,27 +116,30 @@ class BlockchainManager:
         return self.block.user_balance(user)
 
     def add_flag_to_block(self):
-        if self.block.previous_block is None:
+        self.add_flag_to_specific_block(self.block, True)
+
+    def add_flag_to_specific_block(self, block: TxBlock, is_last_block=False):
+        if block.previous_block is None:
             return
 
         my_pubk_bytes = self.pub_k.public_bytes(
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
-        if my_pubk_bytes == self.block.miner:
+        if my_pubk_bytes == block.miner:
             return
 
         result = None
         def check_flag(x): return any(
             my_pubk_bytes == pubk for pubk, _, _ in x)
         already_flagged = check_flag(
-            self.block.invalid_flags) or check_flag(self.block.valid_flags)
+            block.invalid_flags) or check_flag(block.valid_flags)
 
         if not already_flagged:
-            result = self.block.add_flag(self.priv_key, self.pub_k)
+            result = block.add_flag(self.priv_key, self.pub_k)
             self.__store_block()
-            if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
+            if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
                 self.__create_reward_tx()
 
-        if len(self.block.invalid_flags) == REQUIRED_FLAG_COUNT:
+        if len(block.invalid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
             self.remove_last_block()
         return result
 

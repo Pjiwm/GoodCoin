@@ -4,11 +4,17 @@ from InquirerPy import inquirer
 from cli.TransactionMenu import *
 from cli.BlockchainMenu import *
 from globals import manager
-
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
 
 def exit():
     sys.exit(0)
 
+def show_keys():
+    print(f"Public key: \n{manager.pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)}")
+    print("\n")
+    print(f"Private key: \n{manager.priv_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())}")
+    print("\n")
+    inquirer.select("Press enter to go back", choices=["Go back"]).execute()
 
 def register():
     while True:
@@ -78,6 +84,7 @@ def menu():
         menu_mapping["Logout"] = logout
         menu_mapping["Explore Blockchain"] = show_blocks
         menu_mapping["Mine new block"] = mining_menu
+        menu_mapping["Show keys"] = show_keys
         menu_mapping["Exit"] = exit
         for msg in auto_update():
             print(msg)

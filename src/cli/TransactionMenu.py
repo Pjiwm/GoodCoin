@@ -7,6 +7,44 @@ from InquirerPy.validator import NumberValidator
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.backends import default_backend
 
+
+
+def show_txs_from_ledger():
+    swapped_dict = {v.public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo): k for k, v in manager.address_book.items()}
+    last_block = manager.block
+    list_of_txs = []
+    user_bytes = manager.pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+
+    while last_block:
+        for tx in last_block.data:
+            found_user = False
+            for tx_user, _ in tx.inputs:
+                if tx_user == user_bytes:
+                    found_user = True
+            if found_user:
+                list_of_txs.append((last_block.id, last_block.block_hash.hex(), tx, last_block.time_of_creation))
+        last_block = last_block.previous_block
+    index = len(list_of_txs) - 1
+
+    while True:
+        clear_screen()
+        tx_printer(list_of_txs[index][2], swapped_dict)
+        print(f"Block: #{list_of_txs[index][0]}")
+        print(f"Block hash: {info_message(list_of_txs[index][1])}")
+        print(f"Block time of creation: {cyan_message(list_of_txs[index][3])}")
+        print(f"Transaction {index+1}/{len(list_of_txs)}")
+        options = ["Next Transaction", "Previous Transaction", "Back"]
+        option = inquirer.select("Transaction", choices=options).execute()
+        if option == options[0]:
+            index += 1
+        elif option == options[1]:
+            index -= 1
+        else:
+            return
+        if index > len(list_of_txs) - 1 or index < 0:
+            index = 0
+
 def address_book():
     while True:
         clear_screen()
@@ -118,6 +156,7 @@ def transact():
             completer=completer,
             invalid_message="Invalid recipient. Please select an existing user.",
             multicolumn_complete=True,
+            validate=lambda x: x in completer.keys()
         ).execute()
 
         coin_input = inquirer.text(
@@ -171,6 +210,7 @@ def transaction_menu():
    ██    ██   ██ ██   ██ ██   ████ ███████ ██   ██  ██████    ██    ██  ██████  ██   ████ ███████ 
         """
         print(unique_message(title))
+        print(f"Welcome {info_message(manager.username)}!")
         print(
             f"Balance: GC {unique_message(str(round(manager.calculate_balance(), 1)))}")
         if msg:
@@ -182,6 +222,7 @@ def transaction_menu():
             "Make transaction": transact,
             "Transaction Pool": show_tx_pool,
             "Cancel transaction": cancel_transaction,
+            "My transactions": show_txs_from_ledger,
             "Back": None
         }
         option = inquirer.select(

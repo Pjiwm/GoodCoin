@@ -23,6 +23,11 @@ def mining_menu():
             f"Wait {wait_time} seconds before mining a block."))
         inquirer.select("Return to main menu:", choices=["Go back"]).execute()
         return
+    if len(manager.block.valid_flags) < REQUIRED_FLAG_COUNT and manager.block.previous_block:
+        print(error_message(
+            f"Current block has not enough valid flags to mine a block. ({manager.block.count_valid_flags()}/{REQUIRED_FLAG_COUNT}))"))
+        inquirer.select("Return to main menu:", choices=["Go back"]).execute()
+        return
 
     options = ["Optimal mine strategy", "Manual strategy", "Back"]
     option = inquirer.select(
@@ -164,14 +169,18 @@ def show_blocks():
         print(block_tabulate)
         print(error_message(block.error))
         print(f"Block #{block.id}")
-
-        table_options = ["Previous Block", "Next Block", "Back"]
+        table_options = ["Previous Block", "Next Block"]
+        if manager.pub_k and manager.priv_key: # Only if user is logged in.
+            table_options.append("Flag Block")
+        table_options.append("Back")
         option = inquirer.select(
             "Blockchain ⛓️", choices=table_options).execute()
         if option == table_options[0]:
             index += 1
         elif option == table_options[1]:
             index -= 1
+        elif option == "Flag Block":
+            manager.add_flag_to_specific_block(block)
         else:
             return ""
 
