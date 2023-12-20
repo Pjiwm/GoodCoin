@@ -6,3 +6,5 @@ services:
       - ./data/python:/data/python
     env_file:
       - .env
+    ports:
+      - "5000-5100:5000-5100"
