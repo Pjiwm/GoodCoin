@@ -4,7 +4,7 @@ import threading
 from p2p.SocketUtil import newServerSocket, recvObj
 from core.Transaction import Tx
 from core.TxBlock import TxBlock
-from typing import List
+from typing import List, Tuple
 
 class Server:
 
@@ -14,6 +14,7 @@ class Server:
         self.socket: socket = newServerSocket(self.listener, self.port)
         self.is_running = True
         self.tx_received: List[Tx] = []
+        self.flags_received: List[Tuple[bytes, bytes, bool]]
         self.block_received: TxBlock
         self.listener_thread = threading.Thread(target=self.receive_objects)
         self.listener_thread.start()
@@ -25,6 +26,8 @@ class Server:
                 self.tx_received.append(buffer)
             elif isinstance(buffer, TxBlock) and not self.block_received:
                 self.block_received = buffer
+            elif isinstance(buffer, Tuple[bytes, bytes, bool]):
+                self.flags_received.append(buffer)
 
     def stop_server(self):
         self.is_running = False
