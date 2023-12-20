@@ -7,19 +7,19 @@ from core.Signature import *
 from p2p.Server import Server
 from p2p.Client import Client
 import time
-# while True:
-#     Utils.clear_screen()
-#     MainMenu.menu()
+while True:
+    Utils.clear_screen()
+    MainMenu.menu()
 
-myServer = Server()
+# myServer = Server()
 
-client = Client()
+# client = Client()
 
-client.add_recipient("localhost", myServer.port)
+# client.add_recipient("localhost", myServer.port)
 
-tx: Tx = Tx()
-client.send_transaction(tx)
-time.sleep(1)
-print(myServer.tx_received)
+# tx: Tx = Tx()
+# client.send_transaction(tx)
+# time.sleep(1)
+# print(myServer.tx_received)
 
-myServer.stop_server()
+# myServer.stop_server()

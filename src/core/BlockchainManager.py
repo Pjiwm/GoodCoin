@@ -102,7 +102,7 @@ class BlockchainManager:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
 
     def calculate_balance(self):
-        return self.calculate_user_balance(self.pub_k)
+        return self.calculate_user_balance(self.pub_k)  - self.calculate_pool_spendings()
 
     def calculate_user_balance(self, user: Union[bytes, RSAPublicKey]):
         if isinstance(user, RSAPublicKey):
@@ -114,6 +114,15 @@ class BlockchainManager:
             if last_valid_block is None:
                 break
         return self.block.user_balance(user)
+
+    def calculate_pool_spendings(self):
+        my_pubk_bytes = self.pub_k.public_bytes(
+            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        spendings = 0
+        for tx in self.tx_pool.transactions:
+            if tx.inputs[0][0] == my_pubk_bytes:
+                spendings += tx.inputs[0][1]
+        return spendings
 
     def add_flag_to_block(self):
         self.add_flag_to_specific_block(self.block, True)
