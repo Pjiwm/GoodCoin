@@ -7,4 +7,16 @@ services:
     env_file:
       - .env
     ports:
-      - "5000-5100:5000-5100"
+      - "5000:5000"
+
+  client2: # For testing
+    tty: true
+    container_name: client2_goodcoin
+    build:
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./data/client2:/data/client2
+    env_file:
+      - .env
+    ports:
+      - "5001:5000"

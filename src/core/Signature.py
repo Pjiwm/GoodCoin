@@ -33,12 +33,17 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from typing import Tuple, Dict
 
 USER_DB = "data/users.dat"
+ADDRESS_BOOK = "data/address_book.dat"
 def create_data_folder_and_file():
     if not os.path.exists("data"):
         os.makedirs("data")
 
     if not os.path.exists(USER_DB):
         with open(USER_DB, 'xb'):
+            pass
+
+    if not os.path.exists(ADDRESS_BOOK):
+        with open(ADDRESS_BOOK, 'xb'):
             pass
 
 def generate_keys() -> Tuple[RSAPrivateKey, RSAPublicKey]:
@@ -121,7 +126,7 @@ def store_in_address_book(username: str, public_key: RSAPublicKey):
                                         format=serialization.PublicFormat.SubjectPublicKeyInfo
                                         )
     loaded_address_book[username] = pub_bytes
-    file = open(USER_DB, 'wb')
+    file = open(ADDRESS_BOOK, 'wb')
     pickle.dump(loaded_address_book, file, -1)
     file.close()
 
@@ -131,14 +136,21 @@ def pubk_from_bytes(addr: bytes):
 
 def load_address_book() -> Dict[str, RSAPublicKey]:
     try:
-        file = open(USER_DB, 'rb')
-        db = pickle.load(file)
+        file = open(ADDRESS_BOOK, 'rb')
+        address_book = pickle.load(file)
         file.close()
-        public_key_dict = {key: serialization.load_pem_public_key(
-                public_key, default_backend()) for key, (_, public_key) in db.items()}
-        return public_key_dict
+        return {name: pubk_from_bytes(bytes) for name, bytes in address_book.items()}
     except:
         return {}
+    # try:
+    #     file = open(USER_DB, 'rb')
+    #     db = pickle.load(file)
+    #     file.close()
+    #     public_key_dict = {key: serialization.load_pem_public_key(
+    #             public_key, default_backend()) for key, (_, public_key) in db.items()}
+    #     return public_key_dict
+    # except:
+    #     return {}
 
 
 def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:

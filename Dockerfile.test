@@ -1,0 +1,21 @@
+# Use the official Python image with tag 3.8.18-bookworm
+FROM python:3.8.18-bookworm
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Copy the current directory contents into the container at /usr/src/app
+COPY . /usr/src/app
+
+# Install ensurepip module and python3-venv
+RUN apt-get update && \
+    apt-get install -y python3-venv && \
+    python3 -m ensurepip --default-pip
+
+# Create a virtual environment
+RUN python3 -m venv .venv
+
+# Activate the virtual environment and install dependencies
+RUN . .venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt

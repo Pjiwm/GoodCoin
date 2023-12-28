@@ -1,9 +1,12 @@
 import re
+import threading
 from core import Signature
 from core.TxPool import TxPool
 from core.Transaction import Tx
 from core.TxType import TxType
 from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
+from p2p.Client import Client
+from p2p.Server import Server
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from typing import Dict, List, Union
@@ -17,6 +20,8 @@ class BlockchainManager:
     username: str
     address_book: Dict[str, RSAPublicKey]
     block: TxBlock
+    server: Server
+    client: Client
 
     def __init__(self):
         Signature.create_data_folder_and_file()
@@ -26,6 +31,10 @@ class BlockchainManager:
         self.tx_pool = TxPool()
         self.address_book = Signature.load_address_book()
         self.block = self.__load_block()
+        self.server = Server()
+        self.client = Client()
+        self.server_listener_thread = threading.Thread(target=self.populate_from_server)
+        self.server_listener_thread.start()
 
     def register_user(self, username: str, pw: str):
         if not Signature.username_available(username):
@@ -37,6 +46,8 @@ class BlockchainManager:
         key_set = Signature.generate_keys()
         pass_hash = Signature.string_hash(pw)
         Signature.save_user_keys(username, key_set, pass_hash)
+        Signature.store_in_address_book(username, key_set[1])
+        self.client.send_new_user(username, key_set[1])
         self.priv_key, self.pub_k = key_set
         self.username = username
         self.address_book = Signature.load_address_book()
@@ -181,3 +192,17 @@ class BlockchainManager:
         file = open("data/blockchain.dat", 'wb')
         pickle.dump(self.block, file)
         file.close()
+
+    def populate_from_server(self):
+        while self.server.is_running:
+            self.server.receive_objects()
+            if self.server.addresses_received:
+                for username, pub_k in self.server.addresses_received:
+                    self.address_book[username] = pub_k
+                    Signature.store_in_address_book(username, pub_k)
+                    self.server.addresses_received.remove((username, pub_k))
+
+    def stop_server(self):
+        self.server.is_running = False
+        self.server.socket.close()
+        # self.server_listener_thread.join(timeout=1)

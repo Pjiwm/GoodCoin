@@ -1,4 +1,4 @@
-import sys
+import os
 from cli.Utils import *
 from InquirerPy import inquirer
 from cli.TransactionMenu import *
@@ -7,7 +7,9 @@ from globals import manager
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
 
 def exit():
-    sys.exit(0)
+    manager.stop_server()
+    os._exit(0)
+
 
 def show_keys():
     print(f"Public key: \n{manager.pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)}")
