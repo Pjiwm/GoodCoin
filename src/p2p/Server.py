@@ -34,7 +34,7 @@ class Server:
                 self.addresses_received.append((buffer[0], pub_k))
             elif isinstance(buffer, TxBlock) and not self.block_received:
                 self.block_received = buffer
-            elif isinstance(buffer, Tuple[bytes, bytes, bool]):
+            elif self.is_flag(buffer):
                 self.flags_received.append(buffer)
             elif isinstance(buffer, Dict[str, bytes]):
                 for username in buffer:
@@ -45,7 +45,12 @@ class Server:
         return isinstance(buffer, Tx)
 
     def is_user(self, buffer):
-        return isinstance(buffer, tuple) and len(buffer) == 2 and isinstance(buffer[0], str) and isinstance(buffer[1], bytes)
+        if isinstance(buffer, tuple) and len(buffer) == 2:
+            return isinstance(buffer[0], str) and isinstance(buffer[1], bytes)
+
+    def is_flag(self, buffer):
+        if isinstance(buffer, tuple) and len(buffer) == 3:
+            return isinstance(buffer[0], bytes) and isinstance(buffer[1], bytes) and isinstance(buffer[2], bool)
 
 
     def add_recipients(self, address):

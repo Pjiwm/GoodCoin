@@ -215,8 +215,13 @@ class BlockchainManager:
                     self.block.previous_block = prev_block
                     self.server.block_received = None
                     self.__store_block()
+            if self.server.flags_received:
+                    flag_buffer = []
+                    for flag in self.server.flags_received:
+                        flag_buffer.append(flag)
+                        self.server.flags_received.remove(flag)
+                    # TODO: Logic that puts flag in the correct place, for the correct block.
 
     def stop_server(self):
         self.server.is_running = False
         self.server.socket.close()
-        # self.server_listener_thread.join(timeout=1)
