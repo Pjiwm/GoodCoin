@@ -76,6 +76,7 @@ class BlockchainManager:
 
     def make_transaction(self, tx: Tx):
         self.tx_pool.push(tx)
+        self.client.send_transaction(tx)
 
     def get_block(self, prev_idx):
         block = self.block
@@ -201,6 +202,10 @@ class BlockchainManager:
                     self.address_book[username] = pub_k
                     Signature.store_in_address_book(username, pub_k)
                     self.server.addresses_received.remove((username, pub_k))
+            if self.server.tx_received:
+                for tx in self.server.tx_received:
+                    self.tx_pool.push(tx)
+                    self.server.tx_received.remove(tx)
 
     def stop_server(self):
         self.server.is_running = False

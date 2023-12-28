@@ -24,16 +24,13 @@ class Server:
         self.recipients_received: Set[str] = set()
 
     def receive_objects(self):
-            # _, address = self.socket.accept()
-            # address = address[0]
-            # if self.is_local_connection(address):
-            #     return
-
-            # self.add_recipients(address)
-            buffer = recvObj(self.socket)
+            buffer, addr = recvObj(self.socket)
             if not buffer:
                 return
-            elif self.is_tx(buffer):
+            if addr:
+                self.add_recipients(addr)
+
+            if self.is_tx(buffer):
                 self.tx_received.append(buffer)
             elif self.is_user(buffer):
                 pub_k = pubk_from_bytes(buffer[1])

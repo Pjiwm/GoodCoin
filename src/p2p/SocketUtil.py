@@ -21,8 +21,8 @@ def recvObj(socket):
             if not data:
                 break
             all_data = all_data + data
-        return pickle.loads(all_data)
-    return None
+        return (pickle.loads(all_data), addr[0])
+    return (None, None)
 
 
 def sendObj(ip_addr, port, data):

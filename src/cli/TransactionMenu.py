@@ -50,9 +50,9 @@ def show_txs_from_ledger():
             index = 0
 
 def address_book():
+    page = 1
     while True:
         clear_screen()
-        page = 1
         items_per_page = 10
         headers = [info_message("Number"), info_message("Users 🔑")]
         min = (page - 1) * items_per_page
@@ -63,6 +63,7 @@ def address_book():
         table = tabulate(numbered_data, headers=headers, tablefmt="fancy_grid")
         print(table)
         table_options = ["Next Page", "Previous Page", "Back"]
+        print(f"Page #{page}")
         option = inquirer.select(
             "Adress book", choices=table_options).execute()
         if option == "Next Page":
