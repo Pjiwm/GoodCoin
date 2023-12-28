@@ -109,6 +109,7 @@ class BlockchainManager:
         if new_block.good_nonce():
             self.block = new_block
             self.__store_block()
+            self.client.send_block(new_block)
             return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
@@ -132,8 +133,9 @@ class BlockchainManager:
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
         spendings = 0
         for tx in self.tx_pool.transactions:
-            if tx.inputs[0][0] == my_pubk_bytes:
-                spendings += tx.inputs[0][1]
+            for input in tx.inputs:
+                if input[0] == my_pubk_bytes:
+                    spendings += input[1]
         return spendings
 
     def add_flag_to_block(self):
@@ -206,6 +208,13 @@ class BlockchainManager:
                 for tx in self.server.tx_received:
                     self.tx_pool.push(tx)
                     self.server.tx_received.remove(tx)
+            if self.server.block_received:
+                if self.server.block_received.previous_hash == self.block.computeHash():
+                    prev_block = self.block
+                    self.block = self.server.block_received
+                    self.block.previous_block = prev_block
+                    self.server.block_received = None
+                    self.__store_block()
 
     def stop_server(self):
         self.server.is_running = False

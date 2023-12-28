@@ -16,7 +16,7 @@ class Server:
 
         self.tx_received: List[Tx] = []
         self.flags_received: List[Tuple[bytes, bytes, bool]] = []
-        self.block_received: TxBlock
+        self.block_received: TxBlock = None
         self.addresses_received: List[Tuple[str, RSAPublicKey]] = []
         self.recipients_received: Set[str] = set()
 

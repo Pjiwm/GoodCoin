@@ -1,6 +1,6 @@
 from core.Transaction import Tx
 from core.TxBlock import TxBlock
-from p2p.SocketUtil import sendObj, local_ip
+from p2p.SocketUtil import sendObj
 from typing import Tuple, Dict
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
