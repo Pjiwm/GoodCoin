@@ -1,7 +1,4 @@
-import random
 import socket
-import ipaddress
-import select
 from p2p.SocketUtil import newServerSocket, recvObj
 from core.Transaction import Tx
 from core.TxBlock import TxBlock
@@ -53,14 +50,3 @@ class Server:
 
     def add_recipients(self, address):
         self.recipients_received.add(address[0])
-
-    def is_local_connection(self, client_ip):
-        # Get the local machine's IP address
-        local_ip = socket.gethostbyname(socket.gethostname())
-
-        # Convert IP addresses to IPv4 objects for easy comparison
-        client_ip = ipaddress.IPv4Address(client_ip)
-        local_ip = ipaddress.IPv4Address(local_ip)
-
-        # Check if the connection is from the same machine
-        return client_ip == local_ip

@@ -1,6 +1,7 @@
 import socket
 import pickle
 import select
+import ipaddress
 
 BUFFER_SIZE = 1024
 
@@ -16,6 +17,8 @@ def recvObj(socket):
     if socket in inputs:
         connected_socket, addr = socket.accept()
         all_data = b''
+        if is_local_connection(addr[0]):
+            return (None, None)
         while True:
             data = connected_socket.recv(BUFFER_SIZE)
             if not data:
@@ -33,13 +36,11 @@ def sendObj(ip_addr, port, data):
     soc.close()
     return False
 
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(('8.8.8.8', 80))
-        local_ip = s.getsockname()[0]
-    finally:
-        s.close()
-    return local_ip
-
-local_ip = get_local_ip()
+def is_local_connection(client_ip):
+    # Get the local machine's IP address
+    local_ip = socket.gethostbyname(socket.gethostname())
+    # Convert IP addresses to IPv4 objects for easy comparison
+    client_ip = ipaddress.IPv4Address(client_ip)
+    local_ip = ipaddress.IPv4Address(local_ip)
+    # Check if the connection is from the same machine
+    return client_ip == local_ip
