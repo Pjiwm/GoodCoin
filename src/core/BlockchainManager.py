@@ -164,12 +164,10 @@ class BlockchainManager:
             self.client.send_flag(flag, hash)
             self.__store_block()
             if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
-                # result = "Created reward transaction for miner as block has been flagged enough times by users."
                 self.__create_reward_tx()
 
         if len(block.invalid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
             self.remove_last_block()
-            # result = "Removed last block as it has been flagged as invalid by enough users."
         return (flag, hash)
 
     def remove_last_block(self):
@@ -233,8 +231,11 @@ class BlockchainManager:
                             if curr_block.computeHash() == block_hash:
                                 curr_block.add_external_flag(flag)
                                 curr_block = None
+                                if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
+                                    self.__create_reward_tx()
                             else:
                                 curr_block = curr_block.previous_block
+
 
 
 
