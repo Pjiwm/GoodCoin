@@ -164,7 +164,7 @@ class BlockchainManager:
             self.client.send_flag(flag, hash)
             self.__store_block()
             if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
-                self.__create_reward_tx()
+                self.__create_reward_tx(hash)
 
         if len(block.invalid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
             self.remove_last_block()
@@ -176,8 +176,8 @@ class BlockchainManager:
         self.block = self.block.previous_block
         self.__store_block()
 
-    def __create_reward_tx(self):
-        reward_tx = Tx(type=TxType.Reward)
+    def __create_reward_tx(self, hash: bytes):
+        reward_tx = Tx(type=TxType.Reward, uuid=hash)
         reward_tx.add_output(self.block.miner, TxType.Reward.value + self.block.total_tx_fee())
         self.tx_pool.push(reward_tx)
         # self.client.send_transaction(reward_tx)

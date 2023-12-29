@@ -6,18 +6,23 @@ from core.TxType import TxType
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
-from typing import List, Union
+from typing import List, Union, NewType
+from datetime import datetime
 
+TxSelf = NewType('TxSelf', 'Tx')
 
 class Tx:
-    def __init__(self, type=TxType.Normal):
+    def __init__(self, type=TxType.Normal, uuid=None):
         self.type = type
         self.inputs: List[Tuple[bytes, int]] = []  # pub key, amount
         self.outputs: List[Tuple[bytes, int]] = []  # pub key, amount
         self.sigs: List[bytes] = []
         self.reqd: List[bytes] = []
         self.invalidations = []
+        self.uuid_sign = None
+        self.uuid = uuid
 
     def __lt__(self, other):
         # Always puts reward tx first
@@ -50,6 +55,8 @@ class Tx:
         message = self.__gather()
         newsig = sign(message, private)
         self.sigs.append(newsig)
+        if self.type == TxType.Normal:
+            self.__update_uuid(private)
 
     def is_tx_author(self, addr: RSAPublicKey):
         pubk = addr.public_bytes(
@@ -116,6 +123,30 @@ class Tx:
             if verify(self.__gather(), s, pubk_from_bytes(addr)):
                 return True
         return False
+
+    def compare_uuid(self, other: TxSelf):
+        last_input = self.inputs[len(self.inputs) -1]
+        pub_key = last_input[0]
+        if self.type == TxType.Normal and other.type == TxType.Normal:
+            return verify(self.uuid_sign, self.uuid, pub_key) and verify(self.uuid_sign, other.uuid, pub_key)
+        elif self.type == TxType.Reward and other.type == TxType.Reward:
+            return self.uuid == other.uuid
+        return False
+
+
+    def __update_uuid(self, priv_key: RSAPrivateKey):
+        current_time = datetime.now()
+        time_string = current_time.strftime("%Y-%m-%d %H:%M:%S")
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(bytes(str(time_string), 'utf8'))
+        self.uuid = digest.finalize()
+        self.uuid_sign =  priv_key.sign(
+            self.uuid,
+            padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256())
 
     def __gather(self):
         data = []
