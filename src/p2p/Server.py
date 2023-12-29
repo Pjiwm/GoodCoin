@@ -15,7 +15,7 @@ class Server:
         self.is_running = True
 
         self.tx_received: List[Tx] = []
-        self.flags_received: List[Tuple[bytes, bytes, bool]] = []
+        self.flags_received: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
         self.block_received: TxBlock = None
         self.addresses_received: List[Tuple[str, RSAPublicKey]] = []
         self.recipients_received: Set[str] = set()
@@ -49,8 +49,10 @@ class Server:
             return isinstance(buffer[0], str) and isinstance(buffer[1], bytes)
 
     def is_flag(self, buffer):
-        if isinstance(buffer, tuple) and len(buffer) == 3:
-            return isinstance(buffer[0], bytes) and isinstance(buffer[1], bytes) and isinstance(buffer[2], bool)
+        if isinstance(buffer, tuple) and len(buffer) == 2:
+            flag, block_hash = buffer
+            if isinstance(block_hash, bytes) and isinstance(flag, tuple) and len(flag) == 3:
+                return isinstance(flag[0], bytes) and isinstance(flag[1], bytes) and isinstance(flag[2], bool)
 
 
     def add_recipients(self, address):

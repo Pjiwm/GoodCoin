@@ -9,7 +9,7 @@ from p2p.Client import Client
 from p2p.Server import Server
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple
 import pickle
 
 
@@ -97,6 +97,7 @@ class BlockchainManager:
         if new_block.good_nonce():
             self.block = new_block
             self.__store_block()
+            self.client.send_block(new_block)
             return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
             return f"Failed to mine block {new_block.block_hash.hex()} with nonce: {nonce}"
@@ -142,6 +143,7 @@ class BlockchainManager:
         self.add_flag_to_specific_block(self.block, True)
 
     def add_flag_to_specific_block(self, block: TxBlock, is_last_block=False):
+        hash = block.computeHash()
         if block.previous_block is None:
             return
 
@@ -150,23 +152,25 @@ class BlockchainManager:
         if my_pubk_bytes == block.miner:
             return
 
-        result = None
+        flag = None
+
         def check_flag(x): return any(
             my_pubk_bytes == pubk for pubk, _, _ in x)
         already_flagged = check_flag(
             block.invalid_flags) or check_flag(block.valid_flags)
 
         if not already_flagged:
-            result = block.add_flag(self.priv_key, self.pub_k)
+            flag = block.add_flag(self.priv_key, self.pub_k)
+            self.client.send_flag(flag, hash)
             self.__store_block()
             if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
-                result = "Created reward transaction for minder as block has been flagged enough times by users."
+                # result = "Created reward transaction for miner as block has been flagged enough times by users."
                 self.__create_reward_tx()
 
         if len(block.invalid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
             self.remove_last_block()
-            result = "Removed last block as it has been flagged as invalid by enough users."
-        return result
+            # result = "Removed last block as it has been flagged as invalid by enough users."
+        return (flag, hash)
 
     def remove_last_block(self):
         for tx in self.block.data:
@@ -178,6 +182,7 @@ class BlockchainManager:
         reward_tx = Tx(type=TxType.Reward)
         reward_tx.add_output(self.block.miner, TxType.Reward.value + self.block.total_tx_fee())
         self.tx_pool.push(reward_tx)
+        # self.client.send_transaction(reward_tx)
 
     def __load_block(self):
         try:
@@ -216,11 +221,22 @@ class BlockchainManager:
                     self.server.block_received = None
                     self.__store_block()
             if self.server.flags_received:
-                    flag_buffer = []
-                    for flag in self.server.flags_received:
-                        flag_buffer.append(flag)
-                        self.server.flags_received.remove(flag)
-                    # TODO: Logic that puts flag in the correct place, for the correct block.
+                    buffer: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
+                    for item in self.server.flags_received:
+                        buffer.append(item)
+                        self.server.flags_received.remove(item)
+
+                    for flag, block_hash in buffer:
+                        # find block:
+                        curr_block = self.block
+                        while curr_block:
+                            if curr_block.computeHash() == block_hash:
+                                curr_block.add_external_flag(flag)
+                                curr_block = None
+                            else:
+                                curr_block = curr_block.previous_block
+
+
 
     def stop_server(self):
         self.server.is_running = False

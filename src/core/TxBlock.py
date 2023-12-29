@@ -40,12 +40,20 @@ class TxBlock (CBlock):
             Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
         if self.is_valid() and self.good_nonce():
             signed_data = sign((self.block_hash, True), private)
-            self.valid_flags.append((pubk, signed_data, True))
-            return "Added valid flag to block."
+            new_flag = (pubk, signed_data, True)
+            self.valid_flags.append(new_flag)
+            return new_flag
         else:
             signed_data = sign((self.block_hash, False), private)
-            self.invalid_flags.append((pubk, signed_data, False))
-            return "Added invalid flag to block."
+            new_invalid_flag = (pubk, signed_data, False)
+            self.invalid_flags.append(new_invalid_flag)
+            return new_invalid_flag
+
+    def add_external_flag(self, flag: Tuple[bytes, bytes, bool]):
+        if flag[2]:
+            self.valid_flags.append(flag)
+        else:
+            self.invalid_flags.append(flag)
 
     def count_valid_flags(self):
         unique_valid_flags = list(set(self.valid_flags))

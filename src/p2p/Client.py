@@ -19,8 +19,8 @@ class Client:
         block.previous_block = None
         self.__send_to_recipients(block)
 
-    def send_flag(self, flag: Tuple[bytes, bytes, bool]):
-        self.__send_to_recipients(flag)
+    def send_flag(self, flag: Tuple[bytes, bytes, bool], block_hash: bytes):
+        self.__send_to_recipients((flag, block_hash))
 
     def send_address_book(self, address_book: Dict[str, RSAPublicKey]):
         address_book_buffer = {}
