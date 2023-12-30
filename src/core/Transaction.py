@@ -23,6 +23,8 @@ class Tx:
         self.invalidations = []
         self.uuid_sign: Tuple[bytes, bytes] = None # signature, pubk
         self.uuid: bytes = uuid
+        if type == TxType.Normal:
+            self.__set_uuid()
 
     def __lt__(self, other):
         # Always puts reward tx first
@@ -41,16 +43,11 @@ class Tx:
         if self.type == TxType.Reward:
             return other.uuid == self.uuid
 
-        if not self.inputs:
+        if not self.uuid_sign:
+            print("X")
             return False
 
-        pub_k = self.uuid_sign[1]
-        print("==========")
-        print("Check1", verify(self.uuid, self.uuid_sign[0], pub_k))
-        print("Check2",verify(other.uuid, other.uuid_sign[0], pub_k))
-        print("Check3", self.uuid.hex() == other.uuid.hex())
-        print("==========")
-        # TODO: Fix verification of uuid of TX
+        pub_k = pubk_from_bytes(self.uuid_sign[1])
         if verify(self.uuid, self.uuid_sign[0], pub_k) and verify(other.uuid, other.uuid_sign[0], pub_k):
             return self.uuid.hex() == other.uuid.hex()
         return False
@@ -148,21 +145,18 @@ class Tx:
         return False
 
     def __update_uuid(self, priv_key: RSAPrivateKey):
+        signature =  sign(self.uuid, priv_key)
+        pub_k = priv_key.public_key()
+        pub_k_bytes = pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        self.uuid_sign = (signature, pub_k_bytes)
+
+
+    def __set_uuid(self):
         current_time = datetime.now()
         time_string = current_time.strftime("%Y-%m-%d %H:%M:%S")
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(time_string), 'utf8'))
         self.uuid = digest.finalize()
-        signature =  priv_key.sign(
-            self.uuid,
-            padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH
-        ),
-        hashes.SHA256())
-        pub_k = priv_key.public_key()
-        pub_k_bytes = pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
-        self.uuid_sign = (signature, pub_k_bytes)
 
     def __gather(self):
         data = []
