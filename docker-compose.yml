@@ -15,7 +15,7 @@ services:
     build:
       dockerfile: Dockerfile.test
     volumes:
-      - ./data/client2:/data/client2
+      - ./data:/data/client2
     env_file:
       - .env
     ports:

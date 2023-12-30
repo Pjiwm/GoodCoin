@@ -218,6 +218,8 @@ class BlockchainManager:
                     self.block.previous_block = prev_block
                     self.server.block_received = None
                     self.__store_block()
+                    # Remove used txs from pool.
+                    self.__removed_ledger_txs_from_pool()
             if self.server.flags_received:
                     buffer: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
                     for item in self.server.flags_received:
@@ -237,7 +239,12 @@ class BlockchainManager:
                                 curr_block = curr_block.previous_block
 
 
-
+    def __removed_ledger_txs_from_pool(self):
+        block_txs: List[Tx] = self.block.data
+        for tx in block_txs:
+            for pool_tx in self.tx_pool.transactions:
+                if tx.compare_uuid(pool_tx):
+                    self.tx_pool.take(pool_tx)
 
     def stop_server(self):
         self.server.is_running = False
