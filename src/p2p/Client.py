@@ -47,6 +47,8 @@ class Client:
             )
         self.__send_to_recipients((username, public_bytes))
 
+    def send_tx_cancel(self, tx: Tx):
+        self.__send_to_recipients((tx, "cancel"))
 
     def add_recipient(self, ip):
         self.recipients.append(ip)

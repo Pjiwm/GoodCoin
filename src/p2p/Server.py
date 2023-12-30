@@ -19,6 +19,7 @@ class Server:
         self.block_received: TxBlock = None
         self.addresses_received: List[Tuple[str, RSAPublicKey]] = []
         self.recipients_received: Set[str] = set()
+        self.tx_cancels_received: List[Tx] = []
 
     def receive_objects(self):
             buffer, addr = recvObj(self.socket)
@@ -36,10 +37,13 @@ class Server:
                 self.block_received = buffer
             elif self.is_flag(buffer):
                 self.flags_received.append(buffer)
-            elif isinstance(buffer, Dict[str, bytes]):
-                for username in buffer:
-                    pub_k = pubk_from_bytes(buffer[username])
-                    self.addresses_received.append((username, pub_k))
+            elif self.is_tx_cancel(buffer):
+                tx: Tx = buffer[0]
+                self.tx_cancels_received.append(tx)
+            # elif isinstance(buffer, Dict[str, bytes]):
+            #     for username in buffer:
+            #         pub_k = pubk_from_bytes(buffer[username])
+            #         self.addresses_received.append((username, pub_k))
 
     def is_tx(self, buffer):
         return isinstance(buffer, Tx)
@@ -47,13 +51,21 @@ class Server:
     def is_user(self, buffer):
         if isinstance(buffer, tuple) and len(buffer) == 2:
             return isinstance(buffer[0], str) and isinstance(buffer[1], bytes)
+        return False
+
 
     def is_flag(self, buffer):
         if isinstance(buffer, tuple) and len(buffer) == 2:
             flag, block_hash = buffer
             if isinstance(block_hash, bytes) and isinstance(flag, tuple) and len(flag) == 3:
                 return isinstance(flag[0], bytes) and isinstance(flag[1], bytes) and isinstance(flag[2], bool)
+        return False
 
+
+    def is_tx_cancel(self, buffer):
+        if isinstance(buffer, tuple) and len(buffer) == 2:
+            return isinstance(buffer[0], Tx) and isinstance(buffer[1], str)
+        return False
 
     def add_recipients(self, address):
         self.recipients_received.add(address[0])

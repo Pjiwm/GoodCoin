@@ -75,6 +75,13 @@ class BlockchainManager:
             return result
         return []
 
+    def cancel_transaction(self, pub_key: RSAPublicKey, tx: Tx):
+        result = self.tx_pool.cancel_transaction(pub_key, tx)
+        if result == "Transaction has been canceled.":
+            self.client.send_tx_cancel(tx)
+
+
+
     def make_transaction(self, tx: Tx):
         self.tx_pool.push(tx)
         self.client.send_transaction(tx)
@@ -239,6 +246,13 @@ class BlockchainManager:
                                     self.__create_reward_tx(hash=self.block.computeHash())
                             else:
                                 curr_block = curr_block.previous_block
+            if self.server.tx_cancels_received:
+                for tx in self.server.tx_cancels_received:
+                    for pool_tx in self.tx_pool.transactions:
+                        if pool_tx == tx:
+                            self.tx_pool.take(tx)
+                            self.server.tx_cancels_received.remove(tx)
+
 
 
     def __removed_ledger_txs_from_pool(self):

@@ -104,7 +104,7 @@ def cancel_transaction():
         elif option == table_options[1]:
             index -= 1
         elif option == table_options[2]:
-            return manager.tx_pool.cancel_transaction(manager.pub_k, transaction)
+            return manager.cancel_transaction(manager.pub_k, transaction)
         else:
             return
 
