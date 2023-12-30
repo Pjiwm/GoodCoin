@@ -253,8 +253,6 @@ class BlockchainManager:
                             self.tx_pool.take(tx)
                             self.server.tx_cancels_received.remove(tx)
 
-
-
     def __removed_ledger_txs_from_pool(self):
         block_txs: List[Tx] = self.block.data
         for tx in block_txs:

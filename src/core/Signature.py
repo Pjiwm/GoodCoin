@@ -142,15 +142,6 @@ def load_address_book() -> Dict[str, RSAPublicKey]:
         return {name: pubk_from_bytes(bytes) for name, bytes in address_book.items()}
     except:
         return {}
-    # try:
-    #     file = open(USER_DB, 'rb')
-    #     db = pickle.load(file)
-    #     file.close()
-    #     public_key_dict = {key: serialization.load_pem_public_key(
-    #             public_key, default_backend()) for key, (_, public_key) in db.items()}
-    #     return public_key_dict
-    # except:
-    #     return {}
 
 
 def __map_key_dict(dict: Dict[str, RSAPublicKey]) -> Dict[str, bytes]:
@@ -175,4 +166,6 @@ def username_available(name: str) -> bool:
         file.close()
         return True
     file.close()
-    return not db.get(name)
+    address_book = load_address_book()
+    value = address_book.get(name, None)
+    return not db.get(name) and not value
