@@ -21,8 +21,8 @@ class Tx:
         self.sigs: List[bytes] = []
         self.reqd: List[bytes] = []
         self.invalidations = []
-        self.uuid_sign = None
-        self.uuid = uuid
+        self.uuid_sign: Tuple[bytes, bytes] = None # signature, pubk
+        self.uuid: bytes = uuid
 
     def __lt__(self, other):
         # Always puts reward tx first
@@ -32,6 +32,29 @@ class Tx:
             return False
 
         return -self.calc_tx_fee() < -other.calc_tx_fee()
+
+    def __eq__(self, other: TxSelf):
+        if not isinstance(other, Tx):
+            return False
+        if self.type != other.type:
+            return False
+        if self.type == TxType.Reward:
+            return other.uuid == self.uuid
+
+        if not self.inputs:
+            return False
+
+        pub_k = self.uuid_sign[1]
+        print("==========")
+        print("Check1", verify(self.uuid, self.uuid_sign[0], pub_k))
+        print("Check2",verify(other.uuid, other.uuid_sign[0], pub_k))
+        print("Check3", self.uuid.hex() == other.uuid.hex())
+        print("==========")
+        # TODO: Fix verification of uuid of TX
+        if verify(self.uuid, self.uuid_sign[0], pub_k) and verify(other.uuid, other.uuid_sign[0], pub_k):
+            return self.uuid.hex() == other.uuid.hex()
+        return False
+
 
     def add_input(self, from_addr: RSAPublicKey, amount: int):
         self.inputs.append((from_addr.public_bytes(
@@ -124,30 +147,22 @@ class Tx:
                 return True
         return False
 
-    def compare_uuid(self, other: TxSelf):
-        last_input = self.inputs[len(self.inputs) -1]
-        pub_key = last_input[0]
-        if self.type == TxType.Normal and other.type == TxType.Normal:
-            return verify(self.uuid, self.uuid_sign, pub_key) and verify(other.uuid, self.uuid_sign, pub_key)
-        elif self.type == TxType.Reward and other.type == TxType.Reward:
-            return self.uuid == other.uuid
-        return False
-
-
-
     def __update_uuid(self, priv_key: RSAPrivateKey):
         current_time = datetime.now()
         time_string = current_time.strftime("%Y-%m-%d %H:%M:%S")
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(bytes(str(time_string), 'utf8'))
         self.uuid = digest.finalize()
-        self.uuid_sign =  priv_key.sign(
+        signature =  priv_key.sign(
             self.uuid,
             padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()),
             salt_length=padding.PSS.MAX_LENGTH
         ),
         hashes.SHA256())
+        pub_k = priv_key.public_key()
+        pub_k_bytes = pub_k.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        self.uuid_sign = (signature, pub_k_bytes)
 
     def __gather(self):
         data = []
