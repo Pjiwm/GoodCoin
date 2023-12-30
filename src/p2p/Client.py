@@ -16,8 +16,17 @@ class Client:
 
     def send_block(self, block: TxBlock):
         # make sure block has not prevBlock
-        block.previous_block = None
-        self.__send_to_recipients(block)
+        new_block = TxBlock(None, None)
+        new_block.time_of_creation = block.time_of_creation
+        new_block.nonce = block.nonce
+        new_block.invalid_flags = block.invalid_flags
+        new_block.valid_flags = block.valid_flags
+        new_block.miner = block.miner
+        new_block.previous_hash = block.previous_hash
+        new_block.data = block.data
+        new_block.block_hash = block.block_hash
+        new_block.id = block.id
+        self.__send_to_recipients(new_block)
 
     def send_flag(self, flag: Tuple[bytes, bytes, bool], block_hash: bytes):
         self.__send_to_recipients((flag, block_hash))

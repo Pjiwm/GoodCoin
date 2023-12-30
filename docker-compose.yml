@@ -3,7 +3,7 @@ services:
     container_name: python_goodcoin
     image: python:3.8.18-bookworm
     volumes:
-      - ./data/python:/data/python
+      - ./data:/data/python
     env_file:
       - .env
     ports:

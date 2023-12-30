@@ -128,10 +128,11 @@ class Tx:
         last_input = self.inputs[len(self.inputs) -1]
         pub_key = last_input[0]
         if self.type == TxType.Normal and other.type == TxType.Normal:
-            return verify(self.uuid_sign, self.uuid, pub_key) and verify(self.uuid_sign, other.uuid, pub_key)
+            return verify(self.uuid, self.uuid_sign, pub_key) and verify(other.uuid, self.uuid_sign, pub_key)
         elif self.type == TxType.Reward and other.type == TxType.Reward:
             return self.uuid == other.uuid
         return False
+
 
 
     def __update_uuid(self, priv_key: RSAPrivateKey):

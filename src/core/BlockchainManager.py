@@ -31,6 +31,7 @@ class BlockchainManager:
         self.tx_pool = TxPool()
         self.address_book = Signature.load_address_book()
         self.block = self.__load_block()
+        self.__store_block()
         self.server = Server()
         self.client = Client()
         self.server_listener_thread = threading.Thread(target=self.populate_from_server)
@@ -212,14 +213,15 @@ class BlockchainManager:
                     self.tx_pool.push(tx)
                     self.server.tx_received.remove(tx)
             if self.server.block_received:
-                if self.server.block_received.previous_hash == self.block.computeHash():
-                    prev_block = self.block
-                    self.block = self.server.block_received
+                new_block = self.server.block_received
+                self.server.block_received = None
+                prev_block = self.block
+                if new_block.previous_hash == self.block.computeHash():
+                    self.block = new_block
                     self.block.previous_block = prev_block
-                    self.server.block_received = None
                     self.__store_block()
-                    # Remove used txs from pool.
                     self.__removed_ledger_txs_from_pool()
+                    # Remove used txs from pool.
             if self.server.flags_received:
                     buffer: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
                     for item in self.server.flags_received:
@@ -234,7 +236,7 @@ class BlockchainManager:
                                 curr_block.add_external_flag(flag)
                                 curr_block = None
                                 if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
-                                    self.__create_reward_tx()
+                                    self.__create_reward_tx(hash=self.block.computeHash())
                             else:
                                 curr_block = curr_block.previous_block
 
@@ -243,7 +245,9 @@ class BlockchainManager:
         block_txs: List[Tx] = self.block.data
         for tx in block_txs:
             for pool_tx in self.tx_pool.transactions:
-                if tx.compare_uuid(pool_tx):
+                # if tx.compare_uuid(pool_tx):
+                #     self.tx_pool.take(pool_tx)
+                if tx == pool_tx:
                     self.tx_pool.take(pool_tx)
 
     def stop_server(self):
