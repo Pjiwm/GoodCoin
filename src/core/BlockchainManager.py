@@ -7,6 +7,7 @@ from core.TxType import TxType
 from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from p2p.Client import Client
 from p2p.Server import Server
+from p2p.SyncManager import SyncManager
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from typing import Dict, List, Union, Tuple
@@ -22,8 +23,9 @@ class BlockchainManager:
     block: TxBlock
     server: Server
     client: Client
+    sync_manager: SyncManager
 
-    def __init__(self):
+    def __init__(self, is_new: bool):
         Signature.create_data_folder_and_file()
         self.priv_key = None
         self.pub_k = None
@@ -31,9 +33,10 @@ class BlockchainManager:
         self.tx_pool = TxPool()
         self.address_book = Signature.load_address_book()
         self.block = self.__load_block()
-        self.__store_block()
+        self.store_block()
         self.server = Server()
         self.client = Client()
+        self.sync_manager = SyncManager(is_new)
         self.server_listener_thread = threading.Thread(target=self.populate_from_server)
         self.server_listener_thread.start()
 
@@ -104,7 +107,7 @@ class BlockchainManager:
         nonce = new_block.find_nonce()
         if new_block.good_nonce():
             self.block = new_block
-            self.__store_block()
+            self.store_block()
             self.client.send_block(new_block)
             return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
@@ -117,7 +120,7 @@ class BlockchainManager:
         nonce = new_block.find_nonce()
         if new_block.good_nonce():
             self.block = new_block
-            self.__store_block()
+            self.store_block()
             self.client.send_block(new_block)
             return f"Mined new block {new_block.block_hash.hex()} with nonce: {nonce}"
         else:
@@ -170,7 +173,7 @@ class BlockchainManager:
         if not already_flagged:
             flag = block.add_flag(self.priv_key, self.pub_k)
             self.client.send_flag(flag, hash)
-            self.__store_block()
+            self.store_block()
             if len(block.valid_flags) == REQUIRED_FLAG_COUNT and is_last_block:
                 self.__create_reward_tx(hash)
 
@@ -182,7 +185,7 @@ class BlockchainManager:
         for tx in self.block.data:
             self.tx_pool.push(tx)
         self.block = self.block.previous_block
-        self.__store_block()
+        self.store_block()
 
     def __create_reward_tx(self, hash: bytes):
         reward_tx = Tx(type=TxType.Reward, uuid=hash)
@@ -202,7 +205,7 @@ class BlockchainManager:
             genesis.find_nonce()
             return genesis
 
-    def __store_block(self):
+    def store_block(self):
         file = open("data/blockchain.dat", 'wb')
         pickle.dump(self.block, file)
         file.close()
@@ -211,54 +214,69 @@ class BlockchainManager:
         while self.server.is_running:
             self.server.receive_objects()
             if self.server.addresses_received:
-                for username, pub_k in self.server.addresses_received:
-                    self.address_book[username] = pub_k
-                    Signature.store_in_address_book(username, pub_k)
-                    self.server.addresses_received.remove((username, pub_k))
+                self.__handle_addresses()
             if self.server.tx_received:
-                for tx in self.server.tx_received:
-                    self.tx_pool.push(tx)
-                    self.server.tx_received.remove(tx)
+                self.__handle_tx()
             if self.server.block_received:
-                new_block = self.server.block_received
-                self.server.block_received = None
-                prev_block = self.block
-                if new_block.previous_hash == self.block.computeHash():
-                    self.block = new_block
-                    self.block.previous_block = prev_block
-                    self.__store_block()
-                    self.__removed_ledger_txs_from_pool()
-                    # Remove used txs from pool.
+                self.__handle_block()
             if self.server.flags_received:
-                    buffer: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
-                    for item in self.server.flags_received:
-                        buffer.append(item)
-                        self.server.flags_received.remove(item)
-
-                    for flag, block_hash in buffer:
-                        # find block:
-                        curr_block = self.block
-                        while curr_block:
-                            if curr_block.computeHash() == block_hash:
-                                curr_block.add_external_flag(flag)
-                                curr_block = None
-                                if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
-                                    self.__create_reward_tx(hash=self.block.computeHash())
-                            else:
-                                curr_block = curr_block.previous_block
+                self.__handle_flag()
             if self.server.tx_cancels_received:
-                for tx in self.server.tx_cancels_received:
-                    for pool_tx in self.tx_pool.transactions:
-                        if pool_tx == tx:
-                            self.tx_pool.take(tx)
-                            self.server.tx_cancels_received.remove(tx)
+                self.__handle_tx_cancel()
+            if self.server.received_responses:
+                pass
+
+    def __handle_addresses(self):
+            for username, pub_k in self.server.addresses_received:
+                self.address_book[username] = pub_k
+                Signature.store_in_address_book(username, pub_k)
+                self.server.addresses_received.remove((username, pub_k))
+
+    def __handle_tx(self):
+            for tx in self.server.tx_received:
+                self.tx_pool.push(tx)
+                self.server.tx_received.remove(tx)
+
+    def __handle_block(self):
+        new_block = self.server.block_received
+        self.server.block_received = None
+        prev_block = self.block
+        if new_block.previous_hash == self.block.computeHash():
+            self.block = new_block
+            self.block.previous_block = prev_block
+            self.store_block()
+            self.__removed_ledger_txs_from_pool()
+
+    def __handle_flag(self):
+        buffer: List[Tuple[Tuple[bytes, bytes, bool], bytes]] = []
+        for item in self.server.flags_received:
+            buffer.append(item)
+            self.server.flags_received.remove(item)
+
+            for flag, block_hash in buffer:
+                self.__find_block_from_flag_helper(self.block, block_hash, flag)
+
+    def __find_block_from_flag_helper(self, curr_block, block_hash, flag):
+        while curr_block:
+            if curr_block.computeHash() == block_hash:
+                curr_block.add_external_flag(flag)
+                curr_block = None
+                if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
+                    self.__create_reward_tx(hash=self.block.computeHash())
+                else:
+                    curr_block = curr_block.previous_block
+
+    def __handle_tx_cancel(self):
+        for tx in self.server.tx_cancels_received:
+            for pool_tx in self.tx_pool.transactions:
+                if pool_tx == tx:
+                    self.tx_pool.take(tx)
+                    self.server.tx_cancels_received.remove(tx)
 
     def __removed_ledger_txs_from_pool(self):
         block_txs: List[Tx] = self.block.data
         for tx in block_txs:
             for pool_tx in self.tx_pool.transactions:
-                # if tx.compare_uuid(pool_tx):
-                #     self.tx_pool.take(pool_tx)
                 if tx == pool_tx:
                     self.tx_pool.take(pool_tx)
 

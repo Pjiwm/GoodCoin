@@ -5,6 +5,7 @@ from core.TxBlock import TxBlock
 from core.Signature import pubk_from_bytes
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from typing import List, Tuple, Dict, Set
+from p2p.Response import Response, AdressBookResponse, BlockResponse, TxResponse
 
 class Server:
 
@@ -20,6 +21,7 @@ class Server:
         self.addresses_received: List[Tuple[str, RSAPublicKey]] = []
         self.recipients_received: Set[str] = set()
         self.tx_cancels_received: List[Tx] = []
+        self.received_responses: List[Response]
 
     def receive_objects(self):
             buffer, addr = recvObj(self.socket)
@@ -40,6 +42,8 @@ class Server:
             elif self.is_tx_cancel(buffer):
                 tx: Tx = buffer[0]
                 self.tx_cancels_received.append(tx)
+            elif self.is_response(buffer):
+                self.received_responses.append(buffer)
             # elif isinstance(buffer, Dict[str, bytes]):
             #     for username in buffer:
             #         pub_k = pubk_from_bytes(buffer[username])
@@ -53,7 +57,6 @@ class Server:
             return isinstance(buffer[0], str) and isinstance(buffer[1], bytes)
         return False
 
-
     def is_flag(self, buffer):
         if isinstance(buffer, tuple) and len(buffer) == 2:
             flag, block_hash = buffer
@@ -66,6 +69,9 @@ class Server:
         if isinstance(buffer, tuple) and len(buffer) == 2:
             return isinstance(buffer[0], Tx) and isinstance(buffer[1], str)
         return False
+
+    def is_response(self, buffer):
+        return isinstance(buffer, Response)
 
     def add_recipients(self, address):
         self.recipients_received.add(address[0])

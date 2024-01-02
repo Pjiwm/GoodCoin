@@ -1,6 +1,7 @@
 from core.Transaction import Tx
 from core.TxBlock import TxBlock
 from p2p.SocketUtil import sendObj
+from p2p.Requests import RequestData
 from typing import Tuple, Dict
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -46,6 +47,9 @@ class Client:
                 format=PublicFormat.SubjectPublicKeyInfo
             )
         self.__send_to_recipients((username, public_bytes))
+
+    def send_request(self, request: RequestData):
+        self.__send_to_recipients(request)
 
     def send_tx_cancel(self, tx: Tx):
         self.__send_to_recipients((tx, "cancel"))
