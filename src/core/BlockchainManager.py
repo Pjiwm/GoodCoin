@@ -36,7 +36,7 @@ class BlockchainManager:
         self.store_block()
         self.server = Server()
         self.client = Client()
-        self.sync_manager = SyncManager(is_new)
+        self.sync_manager = SyncManager(is_new, self.block)
         self.server_listener_thread = threading.Thread(target=self.populate_from_server)
         self.server_listener_thread.start()
 
@@ -224,7 +224,7 @@ class BlockchainManager:
             if self.server.tx_cancels_received:
                 self.__handle_tx_cancel()
             if self.server.received_responses:
-                pass
+                print("Hello")
 
     def __handle_addresses(self):
             for username, pub_k in self.server.addresses_received:

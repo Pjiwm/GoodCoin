@@ -13,7 +13,7 @@ class Client:
         self.recipients.append("client2_goodcoin")
 
     def send_transaction(self, tx: Tx):
-        self.__send_to_recipients(tx)
+        return self.__send_to_recipients(tx)
 
     def send_block(self, block: TxBlock):
         # make sure block has not prevBlock
@@ -27,10 +27,10 @@ class Client:
         new_block.data = block.data
         new_block.block_hash = block.block_hash
         new_block.id = block.id
-        self.__send_to_recipients(new_block)
+        return self.__send_to_recipients(new_block)
 
     def send_flag(self, flag: Tuple[bytes, bytes, bool], block_hash: bytes):
-        self.__send_to_recipients((flag, block_hash))
+        return self.__send_to_recipients((flag, block_hash))
 
     def send_address_book(self, address_book: Dict[str, RSAPublicKey]):
         address_book_buffer = {}
@@ -39,20 +39,20 @@ class Client:
                 encoding=Encoding.PEM,
                 format=PublicFormat.SubjectPublicKeyInfo
             )
-        self.__send_to_recipients(address_book)
+        return self.__send_to_recipients(address_book)
 
     def send_new_user(self, username: str, public_key: RSAPublicKey):
         public_bytes = public_key.public_bytes(
                 encoding=Encoding.PEM,
                 format=PublicFormat.SubjectPublicKeyInfo
             )
-        self.__send_to_recipients((username, public_bytes))
+        return self.__send_to_recipients((username, public_bytes))
 
     def send_request(self, request: RequestData):
-        self.__send_to_recipients(request)
+        return self.__send_to_recipients(request)
 
     def send_tx_cancel(self, tx: Tx):
-        self.__send_to_recipients((tx, "cancel"))
+        return self.__send_to_recipients((tx, "cancel"))
 
     def add_recipient(self, ip):
         self.recipients.append(ip)
@@ -60,6 +60,6 @@ class Client:
     def __send_to_recipients(self, data, port=5000):
         for address in self.recipients:
             try:
-                sendObj(address, port, data)
+                return sendObj(address, port, data)
             except:
-                return
+                return 1

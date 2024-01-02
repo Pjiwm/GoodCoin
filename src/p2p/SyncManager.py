@@ -1,31 +1,68 @@
-from globals import manager
 from p2p.Client import Client
 from p2p.Server import Server
-import time
 from p2p.Requests import Request, RequestData
+from p2p.Response import Response, TxResponse, AdressBookResponse, BlockResponse
 from core.TxBlock import TxBlock
+# from core.BlockchainManager import BlockchainManager
+from typing import List
 
 class SyncManager:
-    def __init__(self, is_new: bool) -> None:
+    def __init__(self, is_new: bool, blockchain: TxBlock) -> None:
+        # self.manager = BlockchainManager
         self.client = Client()
-        self.server = Server()
-        self.done = False
+        self.blockchain = blockchain
+        self.blocks_ready = True
+        self.blocks_done = False
         self.wipe_pool = False
 
         self.new_blocks: TxBlock = None
         self.last_retrieved_block: TxBlock = None
-        if not manager.block.previous_block and not is_new:
-            manager.block = None
-            manager.store_block()
+        if not self.blockchain.previous_block and not is_new:
+            self.blockchain = None
+            # manager.store_block()
             print("Creating new blockchain environment...")
-
-
+        self.retrieve_data()
 
     def retrieve_data(self):
-        self.request_block()
+        response_result = 0
+        while not self.blocks_done:
+                if self.blocks_ready:
+                    response_result = self.request_block()
+                if response_result == 1:
+                    print("No response....")
+                    self.blocks_ready = True
 
 
     def request_block(self):
-        req = RequestData(Request.GetBlock, self.last_retrieved_block.previous_hash)
-        manager.client.send_request(req)
-        time.sleep(0.1)
+        request_hash = self.last_retrieved_block.previous_hash if self.last_retrieved_block else None
+        req = RequestData(Request.GetBlock, request_hash)
+        print("Requesting block", request_hash)
+        result = self.client.send_request(req)
+        self.blocks_ready = False
+        print(result)
+        return result
+
+    def accept_response(self, data: List[Response]):
+        for response in data:
+            if isinstance(response, BlockResponse):
+                self.accept_block(response)
+
+    def accept_block(self, response: BlockResponse):
+        new_block = response.block
+        self.last_retrieved_block = new_block
+
+        if not self.new_blocks:
+            self.new_blocks = new_block
+            self.block_progress()
+            return
+
+        curr = self.new_blocks
+        while curr.previous_block:
+            curr = curr.previous_block
+        curr.previous_block = new_block
+        self.block_progress()
+
+    def block_progress(self):
+        done_from_start = not self.manager.block and self.last_retrieved_block.previous_hash == None
+        retrieved_all_new = self.blockchain.computeHash() == self.last_retrieved_block.previous_hash
+        self.blocks_done = done_from_start or retrieved_all_new

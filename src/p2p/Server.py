@@ -21,7 +21,7 @@ class Server:
         self.addresses_received: List[Tuple[str, RSAPublicKey]] = []
         self.recipients_received: Set[str] = set()
         self.tx_cancels_received: List[Tx] = []
-        self.received_responses: List[Response]
+        self.received_responses: List[Response] = []
 
     def receive_objects(self):
             buffer, addr = recvObj(self.socket)

@@ -31,10 +31,15 @@ def recvObj(socket):
 def sendObj(ip_addr, port, data):
     soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     soc.connect((ip_addr, port))
+    host = socket.gethostname()
+
+    if socket.gethostbyname(host) == str(soc.getsockname()[0]):
+        soc.close()
+        return 1
     data = pickle.dumps(data)
     soc.send(data)
     soc.close()
-    return False
+    return 0
 
 def is_local_connection(client_ip):
     # Get the local machine's IP address
