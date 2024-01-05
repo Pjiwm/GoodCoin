@@ -8,6 +8,8 @@ from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from p2p.Client import Client
 from p2p.Server import Server
 from p2p.SyncManager import SyncManager
+from p2p.Requests import Request, RequestData
+from p2p.Response import BlockResponse, TxResponse, AdressBookResponse
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from typing import Dict, List, Union, Tuple
@@ -36,10 +38,9 @@ class BlockchainManager:
         self.store_block()
         self.server = Server()
         self.client = Client()
-        self.sync_manager = SyncManager(is_new, self.block)
-        self.server_listener_thread = threading.Thread(target=self.populate_from_server)
+        self.ready = False
+        self.server_listener_thread = threading.Thread(target=self.populate_from_server, args=(is_new,))
         self.server_listener_thread.start()
-
     def register_user(self, username: str, pw: str):
         if not Signature.username_available(username):
             return "Username already in use."
@@ -210,8 +211,12 @@ class BlockchainManager:
         pickle.dump(self.block, file)
         file.close()
 
-    def populate_from_server(self):
+    def populate_from_server(self, is_new: bool):
+        sync_manager = SyncManager(is_new, self.block)
         while self.server.is_running:
+            print("Test")
+            sync_manager.retrieve_data()
+            self.ready = sync_manager.done_syncing
             self.server.receive_objects()
             if self.server.addresses_received:
                 self.__handle_addresses()
@@ -224,7 +229,37 @@ class BlockchainManager:
             if self.server.tx_cancels_received:
                 self.__handle_tx_cancel()
             if self.server.received_responses:
-                print("Hello")
+                print("HANDLING RESPONSE")
+                sync_manager.accept_response(self.server.received_responses)
+                self.server.received_responses = []
+            if self.server.received_requests:
+                print("Handling request")
+                self.__handle_request()
+
+    def __handle_request(self):
+        for request in self.server.received_requests:
+            print("TO:", request.recipient)
+            client = Client()
+            client.recipients = [request.recipient]
+            if request.request_type == Request.GetBlock:
+                block = self.__block_finder_helper(self.block, request.data)
+                response = BlockResponse(block)
+                res = client.send_response(response)
+                print(res)
+            elif request.request_type == Request.GetAddressBook:
+                response = AdressBookResponse(self.address_book)
+                client.send_response(response)
+            elif request.request_type == Request.GetTx:
+                response = TxResponse(self.tx_pool.transactions)
+                client.send_response(response)
+            self.server.received_requests.remove(request)
+
+    def __block_finder_helper(self, curr_block, block_hash):
+        while curr_block:
+            if curr_block.computeHash() == block_hash:
+                return curr_block
+            curr_block = curr_block.previous_block
+        return None
 
     def __handle_addresses(self):
             for username, pub_k in self.server.addresses_received:

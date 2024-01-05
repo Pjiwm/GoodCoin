@@ -4,8 +4,8 @@ services:
     image: python:3.8.18-bookworm
     volumes:
       - ./data:/data/python
-    env_file:
-      - .env
+    environment:
+      - CLIENT=1
     ports:
       - "5000:5000"
 
@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile.test
     volumes:
       - ./data:/data/client2
-    env_file:
-      - .env
+    environment:
+      - CLIENT=2
     ports:
       - "5001:5000"

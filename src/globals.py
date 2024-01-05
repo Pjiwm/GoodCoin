@@ -1,5 +1,6 @@
 from core.BlockchainManager import BlockchainManager
 import argparse
+import os
 
 parser = argparse.ArgumentParser(description='The goodchain wallet.')
 parser.add_argument('--new', type=bool, help='Specify if you want to create blockchain from scratch(true/false)')

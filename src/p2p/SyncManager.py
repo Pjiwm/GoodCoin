@@ -14,6 +14,7 @@ class SyncManager:
         self.blocks_ready = True
         self.blocks_done = False
         self.wipe_pool = False
+        self.done_syncing = False
 
         self.new_blocks: TxBlock = None
         self.last_retrieved_block: TxBlock = None
@@ -21,15 +22,22 @@ class SyncManager:
             self.blockchain = None
             # manager.store_block()
             print("Creating new blockchain environment...")
-        self.retrieve_data()
+        if is_new:
+            self.done_syncing = True
 
     def retrieve_data(self):
         response_result = 0
-        while not self.blocks_done:
+        tries = 0
+        if not self.blocks_done:
                 if self.blocks_ready:
+                    print("Sending")
                     response_result = self.request_block()
                 if response_result == 1:
                     print("No response....")
+                    import os
+                    tries += 1
+                    if tries > 4:
+                        os._exit(0)
                     self.blocks_ready = True
 
 
@@ -43,6 +51,7 @@ class SyncManager:
         return result
 
     def accept_response(self, data: List[Response]):
+        print(data)
         for response in data:
             if isinstance(response, BlockResponse):
                 self.accept_block(response)
@@ -63,6 +72,7 @@ class SyncManager:
         self.block_progress()
 
     def block_progress(self):
-        done_from_start = not self.manager.block and self.last_retrieved_block.previous_hash == None
-        retrieved_all_new = self.blockchain.computeHash() == self.last_retrieved_block.previous_hash
-        self.blocks_done = done_from_start or retrieved_all_new
+        pass
+        # done_from_start = not self.blockchain and self.last_retrieved_block.previous_hash == None
+        # retrieved_all_new = self.blockchain.computeHash() == self.last_retrieved_block.previous_hash
+        # self.blocks_done = done_from_start or retrieved_all_new
