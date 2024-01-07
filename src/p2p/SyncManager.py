@@ -3,76 +3,127 @@ from p2p.Server import Server
 from p2p.Requests import Request, RequestData
 from p2p.Response import Response, TxResponse, AdressBookResponse, BlockResponse
 from core.TxBlock import TxBlock
-# from core.BlockchainManager import BlockchainManager
-from typing import List
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from typing import List, Dict
+import os
+
 
 class SyncManager:
     def __init__(self, is_new: bool, blockchain: TxBlock) -> None:
-        # self.manager = BlockchainManager
+        if not blockchain.previous_block:
+            blockchain = None
+
         self.client = Client()
         self.blockchain = blockchain
+        self.contains_genesis = False
         self.blocks_ready = True
         self.blocks_done = False
         self.wipe_pool = False
         self.done_syncing = False
+        self.should_sync = not is_new
+
+        self.users_done = False
+        self.address_book: Dict[str, RSAPublicKey] = {}
+
+        self.tries = 0
 
         self.new_blocks: TxBlock = None
         self.last_retrieved_block: TxBlock = None
-        if not self.blockchain.previous_block and not is_new:
-            self.blockchain = None
-            # manager.store_block()
+        if not self.blockchain:
             print("Creating new blockchain environment...")
-        if is_new:
+        if not self.should_sync:
             self.done_syncing = True
 
     def retrieve_data(self):
-        response_result = 0
-        tries = 0
+        if self.done_syncing:
+            return
+
+        users_result = 0
+        if not self.users_done:
+            users_result = self.request_users()
+            if users_result != 0:
+                self.tries += 1
+                if self.tries > 4:
+                    print("Could not contact any nodes. Exiting...")
+                    os._exit(0)
+            else:
+                self.users_done = True
+                self.tries = 0
+                print("Users retrieved")
+
+        # Blocks
+        block_result = 0
         if not self.blocks_done:
                 if self.blocks_ready:
-                    print("Sending")
-                    response_result = self.request_block()
-                if response_result == 1:
+                    block_result = self.request_block()
+                if block_result != 0:
                     print("No response....")
-                    import os
-                    tries += 1
-                    if tries > 4:
+                    self.tries += 1
+                    if self.tries > 4:
+                        print("Could not contact any nodes. Exiting...")
                         os._exit(0)
                     self.blocks_ready = True
+
+        self.done_syncing = self.blocks_done and self.users_done
 
 
     def request_block(self):
         request_hash = self.last_retrieved_block.previous_hash if self.last_retrieved_block else None
         req = RequestData(Request.GetBlock, request_hash)
-        print("Requesting block", request_hash)
+        hash_str = request_hash.hex() if request_hash else "LATEST BLOCK"
+        print("Requesting block", hash_str)
         result = self.client.send_request(req)
         self.blocks_ready = False
-        print(result)
+        return result
+
+    def request_users(self):
+        req = RequestData(Request.GetAddressBook, None)
+        result = self.client.send_request(req)
+        print("Requesting users")
         return result
 
     def accept_response(self, data: List[Response]):
-        print(data)
         for response in data:
             if isinstance(response, BlockResponse):
                 self.accept_block(response)
+            elif isinstance(response, AdressBookResponse):
+                self.accept_users(response)
+
+    def accept_users(self, response: AdressBookResponse):
+        self.address_book = response.get_dictionary()
+        print("Accepted users")
+
 
     def accept_block(self, response: BlockResponse):
-        new_block = response.block
-        self.last_retrieved_block = new_block
+        accepted_block = response.block
+        self.last_retrieved_block = accepted_block
+        self.blocks_ready = True
+        print("Accepted block", accepted_block.computeHash().hex())
 
         if not self.new_blocks:
-            self.new_blocks = new_block
+            self.new_blocks = accepted_block
             self.block_progress()
             return
 
         curr = self.new_blocks
+        curr = self.new_blocks
         while curr.previous_block:
             curr = curr.previous_block
-        curr.previous_block = new_block
+        curr.previous_block = accepted_block
         self.block_progress()
+        return
 
     def block_progress(self):
-        pass
-        # done_from_start = not self.blockchain and self.last_retrieved_block.previous_hash == None
-        # retrieved_all_new = self.blockchain.computeHash() == self.last_retrieved_block.previous_hash
-        # self.blocks_done = done_from_start or retrieved_all_new
+        if self.last_retrieved_block.previous_hash == None:
+            self.blocks_done = True
+            self.contains_genesis = True
+            print("Done syncing blocks until genesis")
+            return
+
+        elif not self.blockchain:
+            return
+
+        elif self.blockchain.computeHash() == self.last_retrieved_block.previous_hash:
+            print("Done syncing blocks")
+            self.blocks_done = True
+            return

@@ -44,7 +44,6 @@ class Tx:
             return other.uuid == self.uuid
 
         if not self.uuid_sign:
-            print("X")
             return False
 
         pub_k = pubk_from_bytes(self.uuid_sign[1])

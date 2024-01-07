@@ -29,6 +29,7 @@ class BlockchainManager:
 
     def __init__(self, is_new: bool):
         Signature.create_data_folder_and_file()
+        self.sync_manager = None # added after syncing
         self.priv_key = None
         self.pub_k = None
         self.username = None
@@ -211,12 +212,35 @@ class BlockchainManager:
         pickle.dump(self.block, file)
         file.close()
 
+    def add_synced_data(self):
+        if not self.sync_manager.should_sync:
+            return True
+
+        # Users
+        for key, value in self.sync_manager.address_book.items():
+            if key not in self.address_book:
+                self.address_book[key] = value
+                Signature.store_in_address_book(key, value)
+
+        if self.sync_manager.contains_genesis:
+            self.block = self.sync_manager.new_blocks
+        else:
+            last_blocks = self.block
+            self.block = self.sync_manager.new_blocks
+            curr = self.block
+            while curr.previous_block:
+                curr = curr.previous_block
+            curr.previous_block = last_blocks
+        self.store_block()
+        return True
+
     def populate_from_server(self, is_new: bool):
         sync_manager = SyncManager(is_new, self.block)
         while self.server.is_running:
-            print("Test")
             sync_manager.retrieve_data()
             self.ready = sync_manager.done_syncing
+            if self.ready:
+                self.sync_manager = sync_manager
             self.server.receive_objects()
             if self.server.addresses_received:
                 self.__handle_addresses()
@@ -229,16 +253,13 @@ class BlockchainManager:
             if self.server.tx_cancels_received:
                 self.__handle_tx_cancel()
             if self.server.received_responses:
-                print("HANDLING RESPONSE")
                 sync_manager.accept_response(self.server.received_responses)
                 self.server.received_responses = []
             if self.server.received_requests:
-                print("Handling request")
                 self.__handle_request()
 
     def __handle_request(self):
         for request in self.server.received_requests:
-            print("TO:", request.recipient)
             client = Client()
             client.recipients = [request.recipient]
             if request.request_type == Request.GetBlock:
@@ -255,6 +276,9 @@ class BlockchainManager:
             self.server.received_requests.remove(request)
 
     def __block_finder_helper(self, curr_block, block_hash):
+        if not block_hash:
+            return curr_block
+
         while curr_block:
             if curr_block.computeHash() == block_hash:
                 return curr_block
@@ -298,8 +322,8 @@ class BlockchainManager:
                 curr_block = None
                 if len(self.block.valid_flags) == REQUIRED_FLAG_COUNT:
                     self.__create_reward_tx(hash=self.block.computeHash())
-                else:
-                    curr_block = curr_block.previous_block
+            else:
+                curr_block = curr_block.previous_block
 
     def __handle_tx_cancel(self):
         for tx in self.server.tx_cancels_received:
