@@ -193,7 +193,6 @@ class BlockchainManager:
         reward_tx = Tx(type=TxType.Reward, uuid=hash)
         reward_tx.add_output(self.block.miner, TxType.Reward.value + self.block.total_tx_fee())
         self.tx_pool.push(reward_tx)
-        # self.client.send_transaction(reward_tx)
 
     def __load_block(self):
         try:
@@ -266,7 +265,6 @@ class BlockchainManager:
                 block = self.__block_finder_helper(self.block, request.data)
                 response = BlockResponse(block)
                 res = client.send_response(response)
-                print(res)
             elif request.request_type == Request.GetAddressBook:
                 response = AdressBookResponse(self.address_book)
                 client.send_response(response)

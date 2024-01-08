@@ -48,10 +48,6 @@ class Server:
                 self.received_responses.append(buffer)
             elif self.is_request(buffer):
                 self.received_requests.append(buffer)
-            # elif isinstance(buffer, Dict[str, bytes]):
-            #     for username in buffer:
-            #         pub_k = pubk_from_bytes(buffer[username])
-            #         self.addresses_received.append((username, pub_k))
 
     def is_tx(self, buffer):
         return isinstance(buffer, Tx)
