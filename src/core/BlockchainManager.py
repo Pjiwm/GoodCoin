@@ -8,7 +8,7 @@ from core.TxBlock import TxBlock, REQUIRED_FLAG_COUNT
 from p2p.Client import Client
 from p2p.Server import Server
 from p2p.SyncManager import SyncManager
-from p2p.Requests import Request, RequestData
+from p2p.Requests import Request
 from p2p.Response import BlockResponse, TxResponse, AdressBookResponse
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -221,6 +221,11 @@ class BlockchainManager:
                 self.address_book[key] = value
                 Signature.store_in_address_book(key, value)
 
+        # Transactions
+        self.tx_pool.transactions = []
+        for tx in self.sync_manager.transactions:
+            self.tx_pool.push(tx)
+
         if self.sync_manager.contains_genesis:
             self.block = self.sync_manager.new_blocks
         else:
@@ -268,7 +273,7 @@ class BlockchainManager:
             elif request.request_type == Request.GetAddressBook:
                 response = AdressBookResponse(self.address_book)
                 client.send_response(response)
-            elif request.request_type == Request.GetTx:
+            elif request.request_type == Request.GetTransactions:
                 response = TxResponse(self.tx_pool.transactions)
                 client.send_response(response)
             self.server.received_requests.remove(request)

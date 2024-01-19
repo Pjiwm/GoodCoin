@@ -34,7 +34,6 @@ class Client:
         return self.__send_to_recipients(new_block)
 
     def send_flag(self, flag: Tuple[bytes, bytes, bool], block_hash: bytes):
-        print(">>>>>>>>>>>>>>>>", block_hash.hex())
         return self.__send_to_recipients((flag, block_hash))
 
     def send_address_book(self, address_book: Dict[str, RSAPublicKey]):

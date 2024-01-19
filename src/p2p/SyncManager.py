@@ -25,6 +25,9 @@ class SyncManager:
         self.users_done = False
         self.address_book: Dict[str, RSAPublicKey] = {}
 
+        self.transactions_done = False
+        self.transactions = []
+
         self.tries = 0
 
         self.new_blocks: TxBlock = None
@@ -38,6 +41,7 @@ class SyncManager:
         if self.done_syncing:
             return
 
+        # Users
         users_result = 0
         if not self.users_done:
             users_result = self.request_users()
@@ -50,6 +54,20 @@ class SyncManager:
                 self.users_done = True
                 self.tries = 0
                 print("Users retrieved")
+
+        # Transactions
+        transactions_result = 0
+        if not self.transactions_done:
+            transactions_result = self.request_transactions()
+            if transactions_result != 0:
+                self.tries += 1
+                if self.tries > 4:
+                    print("Could not contact any nodes. Exiting...")
+                    os._exit(0)
+            else:
+                self.transactions_done = True
+                self.tries = 0
+                print("Transactions retrieved")
 
         # Blocks
         block_result = 0
@@ -82,16 +100,29 @@ class SyncManager:
         print("Requesting users")
         return result
 
+    def request_transactions(self):
+        req = RequestData(Request.GetTransactions, None)
+        result = self.client.send_request(req)
+        print("Requesting transactions")
+        return result
+
     def accept_response(self, data: List[Response]):
         for response in data:
             if isinstance(response, BlockResponse):
                 self.accept_block(response)
             elif isinstance(response, AdressBookResponse):
                 self.accept_users(response)
+            elif isinstance(response, TxResponse):
+                self.accept_transactions(response)
 
     def accept_users(self, response: AdressBookResponse):
         self.address_book = response.get_dictionary()
         print("Accepted users")
+
+
+    def accept_transactions(self, response: TxResponse):
+        self.transactions = response.transactions
+        print("Accepted transactions")
 
 
     def accept_block(self, response: BlockResponse):
