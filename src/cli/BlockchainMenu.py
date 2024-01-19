@@ -59,8 +59,10 @@ def manual_mine_menu():
     while True:
         clear_screen()
         print(f"Added transactions {len(tx_to_mine)}/{MAX_TX_AMOUNT}")
-        tx_fee_sum = sum(tx.calc_tx_fee() for tx in transactions)
-        print(f"Total transaction fee: {tx_fee_sum}")
+        print(f"Minimum required transactions: {info_message(str(5))}")
+        tx_fee_sum = sum(tx.calc_tx_fee() for tx in tx_to_mine)
+        round_fee  = info_message(str(round(tx_fee_sum, 1)))
+        print(f"Total transaction fee: {round_fee}")
         transaction = transactions[index]
         tx_printer(transaction, swapped_dict)
 
@@ -84,7 +86,7 @@ def manual_mine_menu():
                          select_deselect[is_selected], "Start mining", "Back"]
 
         option = inquirer.select(
-            "Adress book", choices=table_options).execute()
+            "Address book", choices=table_options).execute()
         if option == table_options[0]:
             index += 1
         elif option == table_options[1]:
@@ -96,7 +98,8 @@ def manual_mine_menu():
                 tx_to_mine.remove(transaction)
             continue
         elif option == table_options[3]:
-            return manual_mine(tx_to_mine)
+            if len(tx_to_mine) > 4 and len(tx_to_mine) < 11:
+                return manual_mine(tx_to_mine)
         else:
             return
 
